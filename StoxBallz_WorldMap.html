@@ -1,0 +1,1816 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>THE STOX MARKET // EARTH</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --g: #39ff88;
+    --g-dim: #1a8a46;
+    --g-glow: rgba(57,255,136,.55);
+    --g-fill: rgba(57,255,136,.18);
+    --bg: #000;
+    --ink: #8fffb8;
+    --ink-dim: #3a6b4d;
+    --amber: #ffb347;
+    --red: #ff4f6b;
+    --border: rgba(57,255,136,.22);
+    --panel: rgba(3, 12, 6, .72);
+    --thick: 1.4;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:'JetBrains Mono',ui-monospace,Menlo,monospace;overflow:hidden;height:100%}
+  canvas{display:block}
+  #root{position:fixed;top:36px;left:0;right:0;bottom:0}
+  /* Background modes */
+  .bg-black{background:#000}
+  .bg-stars{background:
+    radial-gradient(circle at 20% 30%, rgba(57,255,136,.06), transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(57,255,136,.04), transparent 35%),
+    #000;
+  }
+  .bg-grid{
+    background:
+      linear-gradient(rgba(57,255,136,.06) 1px, transparent 1px) 0 0/60px 60px,
+      linear-gradient(90deg, rgba(57,255,136,.06) 1px, transparent 1px) 0 0/60px 60px,
+      radial-gradient(circle at center, rgba(57,255,136,.05), transparent 60%),
+      #000;
+  }
+  /* Starfield */
+  .starfield{position:absolute;inset:0;pointer-events:none;z-index:0}
+  /* CRT overlay */
+  .crt{position:absolute;inset:0;pointer-events:none;z-index:30;mix-blend-mode:screen;opacity:.35}
+  .crt::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(to bottom, rgba(57,255,136,.06) 0px, rgba(57,255,136,.06) 1px, transparent 1px, transparent 3px);}
+  .vignette{position:absolute;inset:0;pointer-events:none;z-index:29;background:radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,.85) 100%)}
+  /* HUD */
+  .hud{position:absolute;z-index:20;color:var(--ink);text-transform:uppercase;letter-spacing:.08em}
+  .mono{font-family:'JetBrains Mono',monospace}
+  .display{font-family:'Space Grotesk','JetBrains Mono',sans-serif;letter-spacing:.02em;text-transform:uppercase}
+  .tag{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);padding:3px 8px;font-size:10px;color:var(--g);background:rgba(57,255,136,.04)}
+  .tag .dot{width:6px;height:6px;background:var(--g);box-shadow:0 0 8px var(--g-glow);border-radius:50%}
+  .tag.red{border-color:rgba(255,79,107,.4);color:var(--red)}
+  .tag.red .dot{background:var(--red);box-shadow:0 0 8px rgba(255,79,107,.6)}
+  .tag.amber{border-color:rgba(255,179,71,.4);color:var(--amber)}
+  .tag.amber .dot{background:var(--amber);box-shadow:0 0 8px rgba(255,179,71,.6)}
+  .panel{background:var(--panel);border:1px solid var(--border);backdrop-filter: blur(4px);box-shadow:inset 0 0 30px rgba(57,255,136,.04), 0 0 0 1px rgba(0,0,0,.4)}
+  .panel .hd{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--border);font-size:10px;color:var(--g);letter-spacing:.15em}
+  .panel .hd .corner{color:var(--ink-dim)}
+  .panel .bd{padding:12px}
+  /* Top bar */
+  .topbar{top:0;left:0;right:0;display:flex;align-items:stretch;border-bottom:1px solid var(--border);background:linear-gradient(to bottom, rgba(0,0,0,.95), rgba(0,0,0,.6))}
+  .brand{display:flex;align-items:center;gap:12px;padding:10px 16px;border-right:1px solid var(--border);min-width:270px}
+  .brand .logo{width:26px;height:26px;border:1.5px solid var(--g);position:relative;display:grid;place-items:center}
+  .brand .logo::before{content:"";position:absolute;inset:4px;border:1px solid var(--g);border-radius:50%}
+  .brand .logo::after{content:"";position:absolute;inset:50% 4px 4px 4px;border-top:1px solid var(--g)}
+  .brand .name{font-size:13px;font-weight:600;color:var(--g);letter-spacing:.18em}
+  .brand .sub{font-size:9px;color:var(--ink-dim);letter-spacing:.2em;margin-top:2px}
+  .tabs{display:flex}
+  .tab{padding:10px 18px;border-right:1px solid var(--border);font-size:11px;letter-spacing:.18em;color:var(--ink-dim);cursor:pointer;display:flex;align-items:center;gap:8px}
+  .tab.active{color:var(--g);background:rgba(57,255,136,.05);box-shadow:inset 0 -2px 0 var(--g)}
+  .tab .num{font-size:9px;color:var(--ink-dim);border:1px solid var(--border);padding:1px 4px}
+  .tab.active .num{color:var(--g);border-color:var(--g)}
+  .sys{margin-left:auto;display:flex;align-items:center;gap:14px;padding:10px 16px;font-size:10px;color:var(--ink-dim);letter-spacing:.15em}
+  .sys .pill{border:1px solid var(--border);padding:3px 8px;color:var(--ink)}
+  /* Ticker */
+  .ticker{position:absolute;left:0;right:0;bottom:0;z-index:22;border-top:1px solid var(--border);background:rgba(0,0,0,.9);overflow:hidden;height:34px;display:flex;align-items:center}
+  .ticker .label{font-size:9px;color:var(--bg);background:var(--g);padding:10px 10px;letter-spacing:.2em;font-weight:700;align-self:stretch;display:flex;align-items:center}
+  .ticker-track{display:flex;gap:36px;white-space:nowrap;animation:tk 90s linear infinite;padding-left:24px;font-size:11px}
+  .ticker-item{display:inline-flex;gap:8px;align-items:center}
+  .ticker-item .sym{color:var(--ink);letter-spacing:.1em}
+  .ticker-item .px{color:var(--g)}
+  .ticker-item .chg.up{color:var(--g)}
+  .ticker-item .chg.dn{color:var(--red)}
+  .ticker-item .chg.amb{color:var(--amber)}
+  @keyframes tk{to{transform:translateX(-50%)}}
+
+  /* Left portfolio */
+  .portfolio{position:absolute;left:14px;top:70px;width:290px;z-index:20}
+  .balance{font-family:'Space Grotesk',sans-serif;font-size:34px;font-weight:600;color:var(--g);letter-spacing:.01em;line-height:1}
+  .sub-balance{font-size:10px;color:var(--ink-dim);letter-spacing:.15em;margin-top:6px}
+  .row{display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:6px 0;border-bottom:1px dashed rgba(57,255,136,.12)}
+  .row:last-child{border-bottom:0}
+  .row .k{color:var(--ink-dim);letter-spacing:.1em}
+  .row .v{color:var(--ink)}
+  .row .v.up{color:var(--g)}
+  .row .v.dn{color:var(--red)}
+  .chart{height:62px;position:relative;border:1px solid var(--border);margin-top:10px;background:
+    linear-gradient(rgba(57,255,136,.04) 1px, transparent 1px) 0 0/12px 12px,
+    linear-gradient(90deg, rgba(57,255,136,.04) 1px, transparent 1px) 0 0/12px 12px
+  }
+  .chart svg{width:100%;height:100%;display:block}
+
+  /* Right events */
+  .events{position:absolute;right:14px;top:70px;width:320px;z-index:20}
+  .ev{font-size:11px;padding:8px 0;border-bottom:1px dashed rgba(57,255,136,.12);display:grid;grid-template-columns:44px 1fr;gap:10px}
+  .ev:last-child{border-bottom:0}
+  .ev .t{color:var(--ink-dim);font-size:9px;letter-spacing:.12em}
+  .ev .msg{color:var(--ink);line-height:1.5}
+  .ev .msg b{color:var(--g);font-weight:500}
+  .ev.alert .msg b{color:var(--red)}
+  .ev.warn .msg b{color:var(--amber)}
+  .ev-head{display:flex;align-items:center;gap:8px}
+
+  /* Region card (bottom pinned) */
+  .region-card{position:absolute;left:50%;transform:translateX(-50%);bottom:48px;z-index:21;width:min(900px,calc(100vw - 40px));display:grid;grid-template-columns:1.1fr 1fr 1.2fr;gap:0;pointer-events:auto;opacity:0;transition:opacity .25s ease, transform .35s ease}
+  .region-card.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .region-card.hidden{transform:translateX(-50%) translateY(20px)}
+  .rc-col{border-right:1px solid var(--border);padding:12px 16px}
+  .rc-col:last-child{border-right:0}
+  .rc-kicker{font-size:9px;letter-spacing:.2em;color:var(--ink-dim)}
+  .rc-name{font-family:'Space Grotesk',sans-serif;font-size:24px;color:var(--g);margin-top:6px;line-height:1;letter-spacing:.01em;text-shadow:0 0 12px var(--g-glow)}
+  .rc-meta{font-size:10px;color:var(--ink-dim);letter-spacing:.12em;margin-top:8px;display:flex;gap:10px;flex-wrap:wrap}
+  .rc-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+  .rc-stat .l{font-size:9px;color:var(--ink-dim);letter-spacing:.15em}
+  .rc-stat .v{font-family:'Space Grotesk',sans-serif;font-size:18px;color:var(--ink);margin-top:2px}
+  .rc-stat .v.pos{color:var(--g)}
+  .rc-stat .v.neg{color:var(--red)}
+  .rc-actions{display:flex;flex-direction:column;gap:8px}
+  .btn{border:1px solid var(--border);background:transparent;color:var(--ink);padding:9px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all .15s}
+  .btn:hover{border-color:var(--g);color:var(--g);background:rgba(57,255,136,.06)}
+  .btn.primary{border-color:var(--g);color:var(--g);background:rgba(57,255,136,.08)}
+  .btn.primary:hover{background:rgba(57,255,136,.18);box-shadow:0 0 18px rgba(57,255,136,.25)}
+  .btn.danger:hover{border-color:var(--red);color:var(--red);background:rgba(255,79,107,.06)}
+  .btn .arr{font-family:monospace}
+
+  /* Compass / controls */
+  .compass{position:absolute;right:14px;bottom:50px;z-index:20;width:150px;font-size:10px;color:var(--ink-dim);letter-spacing:.1em}
+  .compass .d{font-family:'Space Grotesk';font-size:14px;color:var(--ink);letter-spacing:.15em}
+  .ctrls{position:absolute;left:14px;bottom:50px;z-index:20;display:flex;gap:6px}
+  .ctrls .btn{padding:7px 10px;font-size:10px;min-width:38px;justify-content:center}
+
+  /* Tweaks panel */
+  .tweaks{position:absolute;right:14px;top:50%;transform:translateY(-50%);width:260px;z-index:25;display:none}
+  .tweaks.show{display:block}
+  .tweaks .bd{display:flex;flex-direction:column;gap:14px}
+  .tw-row{display:flex;flex-direction:column;gap:6px}
+  .tw-row .lab{font-size:10px;color:var(--ink-dim);letter-spacing:.15em;display:flex;justify-content:space-between}
+  .tw-row .lab span:last-child{color:var(--g)}
+  .tw-swatches{display:flex;gap:6px}
+  .tw-sw{flex:1;height:22px;border:1px solid rgba(255,255,255,.2);cursor:pointer}
+  .tw-sw.active{outline:1px solid #fff;outline-offset:2px}
+  input[type="range"]{-webkit-appearance:none;appearance:none;background:transparent;width:100%}
+  input[type="range"]::-webkit-slider-runnable-track{height:2px;background:var(--border)}
+  input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;height:12px;width:12px;background:var(--g);margin-top:-5px;box-shadow:0 0 8px var(--g-glow);cursor:pointer}
+  .seg{display:flex;border:1px solid var(--border)}
+  .seg button{flex:1;background:transparent;border:0;border-right:1px solid var(--border);color:var(--ink-dim);font-family:'JetBrains Mono',monospace;font-size:10px;padding:6px;letter-spacing:.12em;cursor:pointer;text-transform:uppercase}
+  .seg button:last-child{border-right:0}
+  .seg button.on{color:var(--g);background:rgba(57,255,136,.08)}
+
+  /* Coord overlay */
+  .coord{position:absolute;z-index:19;font-size:9px;color:var(--ink-dim);letter-spacing:.15em;pointer-events:none}
+  .coord.tl{top:54px;left:14px}
+  .coord.tr{top:54px;right:14px}
+  .coord.bl{bottom:46px;left:14px;display:none}
+  /* Corner ticks */
+  .tick{position:absolute;width:16px;height:16px;pointer-events:none;z-index:18;border-color:var(--g);opacity:.65}
+  .tick.tl{top:50px;left:10px;border-top:1px solid;border-left:1px solid}
+  .tick.tr{top:50px;right:10px;border-top:1px solid;border-right:1px solid}
+  .tick.bl{bottom:42px;left:10px;border-bottom:1px solid;border-left:1px solid}
+  .tick.br{bottom:42px;right:10px;border-bottom:1px solid;border-right:1px solid}
+
+  /* Cursor hud (mouse coord) */
+  .cursor-hud{position:fixed;pointer-events:none;font-size:9px;color:var(--g);letter-spacing:.12em;padding-left:12px;padding-top:12px;z-index:26;opacity:.85;display:none;text-shadow:0 0 4px rgba(0,0,0,.9)}
+
+  /* Loading */
+  #loader{position:fixed;inset:0;display:grid;place-items:center;background:#000;z-index:40;color:var(--g);font-size:11px;letter-spacing:.2em}
+  #loader .box{display:flex;flex-direction:column;gap:10px;align-items:center}
+  .scan{width:240px;height:2px;background:rgba(57,255,136,.15);position:relative;overflow:hidden}
+  .scan::before{content:"";position:absolute;top:0;bottom:0;width:40%;background:var(--g);animation:sc 1.2s linear infinite;box-shadow:0 0 10px var(--g-glow)}
+  @keyframes sc{0%{left:-40%}100%{left:100%}}
+
+  /* Scrollbar */
+  .scroll{max-height:260px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--g-dim) transparent}
+  .scroll::-webkit-scrollbar{width:6px}
+  .scroll::-webkit-scrollbar-thumb{background:var(--g-dim)}
+
+<style>
+/* ═══ STOXBALLZ UNIVERSE NAV ═══ */
+#sxbz-nav{
+  position:fixed;top:0;left:0;right:0;height:36px;z-index:99999;
+  display:flex;align-items:center;
+  background:#020508;
+  border-bottom:2px solid #ffaa0030;
+  font-family:'Share Tech Mono','JetBrains Mono',monospace;
+  font-size:10px;letter-spacing:.1em;
+  user-select:none;
+}
+#sxbz-nav::after{
+  content:'';position:absolute;bottom:-1px;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,#ffaa0060,transparent);
+  pointer-events:none;
+}
+.snav-btn{
+  display:flex;align-items:center;gap:6px;
+  padding:0 14px;height:100%;min-width:0;
+  background:transparent;border:none;
+  border-right:1px solid #1a2236;
+  color:#3a4a64;cursor:pointer;
+  text-transform:uppercase;white-space:nowrap;
+  transition:color .12s,background .12s;
+  text-decoration:none;
+  font-family:inherit;font-size:inherit;letter-spacing:inherit;
+}
+.snav-btn:hover{color:#ffcc44;background:rgba(255,170,0,.05)}
+.snav-btn.snav-active{
+  color:#ffaa00;
+  border-bottom:2px solid #ffaa00;
+  background:rgba(255,170,0,.07);
+  pointer-events:none;
+}
+.snav-btn.snav-future{
+  color:#1e2a3a;cursor:default;pointer-events:none;
+  border-right:1px solid #111820;
+}
+.snav-icon{font-size:12px;flex-shrink:0}
+.snav-label{letter-spacing:.12em}
+.snav-pip{
+  width:4px;height:4px;border-radius:50%;
+  background:#ffaa00;flex-shrink:0;
+  box-shadow:0 0 4px #ffaa00;
+  animation:snav-pulse 2s ease infinite;
+}
+@keyframes snav-pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.snav-spacer{flex:1;min-width:8px}
+.snav-badges{
+  display:flex;align-items:center;gap:0;
+  border-left:1px solid #1a2236;height:100%;flex-shrink:0;
+}
+.snav-badge{
+  display:flex;align-items:center;gap:5px;
+  padding:0 12px;height:100%;
+  border-right:1px solid #111820;
+  font-size:9px;color:#2a3a50;letter-spacing:.1em;
+}
+.snav-badge span{color:#ffaa00;font-size:10px}
+#snav-fix span{color:#ffaa00}
+#snav-phase span{color:#00e5ff}
+#snav-cash span{color:#ffcc44}
+
+</style>
+</style>
+</head>
+<body>
+<div id="sxbz-nav" role="navigation">
+  <a class="snav-btn" href="StoxBallz_DailyFix_v2.html"><span class="snav-icon">⊞</span><span class="snav-label">Terminal</span></a>
+  <button class="snav-btn snav-active"><span class="snav-icon">◉</span><span class="snav-label">World Map</span><span class="snav-pip"></span></button>
+  <a class="snav-btn" href="StoxBallz_DiGiWars.html"><span class="snav-icon">⚔</span><span class="snav-label">DiGiWars</span></a>
+  <button class="snav-btn snav-future" title="Coming Soon"><span class="snav-icon">◈</span><span class="snav-label">DiGiBanx</span></button>
+  <a class="snav-btn" href="StoxBallz_WORD.html"><span class="snav-icon">◎</span><span class="snav-label">WORD</span></a>
+  <button class="snav-btn snav-future" title="Coming Soon"><span class="snav-icon">◆</span><span class="snav-label">Museum</span></button>
+  <button class="snav-btn snav-future" title="Coming Soon"><span class="snav-icon">◉</span><span class="snav-label">Manual</span></button>
+  <div class="snav-spacer"></div>
+  <div class="snav-badges"><div class="snav-badge" id="snav-fix">Fix <span id="snav-fix-num">—</span></div><div class="snav-badge" id="snav-phase">Phase <span id="snav-phase-val">—</span></div><div class="snav-badge" id="snav-cash">◈ <span id="snav-cash-val">$10,000</span></div></div>
+</div>
+<div id="loader"><div class="box">
+  <div style="font-family:'Space Grotesk';font-size:22px;color:var(--g);letter-spacing:.15em">STOX // EARTH</div>
+  <div>ESTABLISHING ORBITAL UPLINK</div>
+  <div class="scan"></div>
+  <div id="loadStatus" style="color:var(--ink-dim);font-size:9px">FETCHING CARTOGRAPHY…</div>
+</div></div>
+
+<div id="root">
+  <canvas id="globe"></canvas>
+  <canvas id="starfield" class="starfield"></canvas>
+  <div class="vignette"></div>
+  <div class="crt"></div>
+
+  <!-- TOP BAR -->
+  <div class="hud panel topbar">
+    <div class="brand">
+      <div class="logo"></div>
+      <div>
+        <div class="name display">THE STOX MARKET</div>
+        <div class="sub">COMMODITIES // v0.1 TERRA</div>
+      </div>
+    </div>
+    <div class="tabs">
+      <div class="tab active"><span class="num">01</span>EARTH</div>
+      <div class="tab"><span class="num">02</span>LUNA</div>
+      <div class="tab"><span class="num">03</span>MARS</div>
+      <div class="tab"><span class="num">04</span>BELT</div>
+    </div>
+    <div class="sys">
+      <span>SESSION <span class="pill" id="session">04:17:26</span></span>
+      <span>LAT <span class="pill" id="lat">00.00°</span></span>
+      <span>LON <span class="pill" id="lon">00.00°</span></span>
+      <span class="tag"><span class="dot"></span>MARKET OPEN</span>
+    </div>
+  </div>
+
+  <!-- LEFT PORTFOLIO -->
+  <div class="hud panel portfolio" id="digibanx-panel">
+    <div class="hd">
+      <span style="color:#ffb347;letter-spacing:.18em">◈ DIGIBANX</span>
+      <span class="corner" style="cursor:pointer;font-size:10px" onclick="openLoadModal()" title="Load World State">⊞ LOAD</span>
+    </div>
+    <div class="bd">
+      <div class="balance" id="balance" style="color:#ffb347">$10,000.00</div>
+      <div class="sub-balance">NET LIQUIDATION VALUE</div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <span class="tag amber"><span class="dot"></span><span id="db-pnl">+$0.00</span></span>
+        <span class="tag"><span class="dot"></span><span id="db-positions">0 OPEN</span></span>
+      </div>
+      <div id="spark" style="margin-top:8px"></div>
+      <div style="margin-top:10px">
+        <div class="row"><span class="k">CASH</span><span class="v" id="db-cash">$10,000.00</span></div>
+        <div class="row"><span class="k">INVESTED</span><span class="v up" id="db-invested">$0.00</span></div>
+        <div class="row"><span class="k">MKT VALUE</span><span class="v" id="db-mktval">$0.00</span></div>
+        <div class="row"><span class="k">FIX #</span><span class="v" id="db-fix">0 · Genesis</span></div>
+      </div>
+      <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">
+        <div style="font-size:9px;color:var(--ink-dim);letter-spacing:.15em;margin-bottom:6px">POSITIONS</div>
+        <div id="db-holdings" style="max-height:120px;overflow-y:auto"></div>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:6px">
+        <button class="btn" style="flex:1;font-size:9px" onclick="openLoadModal()">LOAD STATE</button>
+        <button class="btn" style="flex:1;font-size:9px" onclick="exportWorldState()">EXPORT</button>
+      </div>
+    </div>
+  </div
+  <!-- RIGHT EVENTS -->
+  <div class="hud panel events">
+    <div class="hd"><span>// MARKET FEED</span><span class="corner">◥</span></div>
+    <div class="bd">
+      <div id="evList" class="scroll"></div>
+    </div>
+  </div>
+
+  <!-- BOTTOM REGION CARD -->
+  <div class="hud panel region-card hidden" id="regionCard">
+    <div class="rc-col">
+      <div class="rc-kicker" id="rc-kind">SOVEREIGN STATE</div>
+      <div class="rc-name" id="rc-name">—</div>
+      <div class="rc-meta">
+        <span id="rc-coord">00.00° N / 00.00° E</span>
+        <span id="rc-code">ISO-3166 ——</span>
+      </div>
+      <div style="margin-top:10px">
+        <span class="tag"><span class="dot"></span><span id="rc-status">TRADABLE</span></span>
+      </div>
+    </div>
+    <div class="rc-col">
+      <div class="rc-stats">
+        <div class="rc-stat"><div class="l">TICKER</div><div class="v" id="rc-ticker">—</div></div>
+        <div class="rc-stat"><div class="l">LAST</div><div class="v pos" id="rc-last">—</div></div>
+        <div class="rc-stat"><div class="l">CHG 24h</div><div class="v pos" id="rc-chg">—</div></div>
+        <div class="rc-stat"><div class="l">VOL</div><div class="v" id="rc-vol">—</div></div>
+      </div>
+    </div>
+    <div class="rc-col">
+      <div class="rc-actions">
+        <button class="btn primary" id="rc-buy-btn" onclick="tradeFromMap('buy')">BUY <span class="arr">▲</span></button>
+        <button class="btn danger" id="rc-sell-btn" onclick="tradeFromMap('sell')">SELL <span class="arr">▼</span></button>
+        <button class="btn" onclick="tradeFromMap('watch')">WATCH +</button>
+      </div>
+      <div style="margin-top:6px;font-size:9px;color:var(--ink-dim)" id="rc-trade-msg"></div>
+    </div>
+  </div
+
+  <!-- Compass & controls -->
+  <div class="hud compass">
+    <div class="d" id="heading">N 000°</div>
+    <div style="margin-top:4px;display:flex;gap:8px">
+      <span>PITCH <span id="pitch" style="color:var(--ink)">00°</span></span>
+      <span>ZOOM <span id="zoom" style="color:var(--ink)">1.0x</span></span>
+    </div>
+  </div>
+  <div class="hud ctrls">
+    <button class="btn" id="btn-rotate">AUTO</button>
+    <button class="btn" id="btn-reset">RESET</button>
+    <button class="btn" id="btn-us">USA</button>
+  </div>
+
+  <!-- Tweaks -->
+  <div class="hud panel tweaks" id="tweaks">
+    <div class="hd"><span>// TWEAKS</span><span class="corner" style="cursor:pointer" id="twClose">✕</span></div>
+    <div class="bd">
+      <div class="tw-row">
+        <div class="lab"><span>GREEN HUE</span><span id="tw-hueLabel">VIRIDIS</span></div>
+        <div class="tw-swatches" id="tw-hues"></div>
+      </div>
+      <div class="tw-row">
+        <div class="lab"><span>OUTLINE THICKNESS</span><span id="tw-thickLabel">1.4</span></div>
+        <input type="range" id="tw-thick" min="0.6" max="3" step="0.1" value="1.4" />
+      </div>
+      <div class="tw-row">
+        <div class="lab"><span>HOVER EFFECT</span></div>
+        <div class="seg" id="tw-hover">
+          <button data-v="scanline" class="on">SCANLINE</button>
+          <button data-v="fill">FILL</button>
+          <button data-v="glow">GLOW</button>
+        </div>
+      </div>
+      <div class="tw-row">
+        <div class="lab"><span>BACKGROUND</span></div>
+        <div class="seg" id="tw-bg">
+          <button data-v="black">BLACK</button>
+          <button data-v="stars" class="on">STARS</button>
+          <button data-v="grid">GRID</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Corner ticks -->
+  <div class="tick tl"></div><div class="tick tr"></div><div class="tick bl"></div><div class="tick br"></div>
+  <div class="coord tl mono">N 90.0° // S 90.0°</div>
+  <div class="coord tr mono">W 180.0° // E 180.0°</div>
+
+  <!-- Cursor hud -->
+  <div class="cursor-hud mono" id="cursorHud">— — —</div>
+
+</div>
+
+<!-- tweak state (persisted block) -->
+<script>
+window.__TWEAKS__ = /*EDITMODE-BEGIN*/{
+  "hue": "#86efac",
+  "thickness": 1.4,
+  "hoverEffect": "glow",
+  "background": "black"
+}/*EDITMODE-END*/;
+</script>
+
+<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+<script src="https://unpkg.com/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script src="https://unpkg.com/d3-geo@3.1.0/dist/d3-geo.min.js"></script>
+<script>
+// Hand-built low-res sea/ocean polygons (lng, lat) — regional chunks
+// Polygons are simple lat/lng rectangles or bow-shaped regions; the raycaster
+// tests them by checking (lng,lat) against a convex hull after projecting onto sphere.
+// Each entry: { name, kind, code, bbox:[minLng,minLat,maxLng,maxLat] or polygon:[[lng,lat],...] }
+// Order matters — more specific seas must come BEFORE the big oceans.
+
+window.SEAS = [
+  // ——— MAJOR SEAS & GULFS (specific first) ———
+  { name: "Mediterranean Sea",    kind: "SEA",  code: "MED", bbox: [-6, 30, 36, 46]  },
+  { name: "Black Sea",            kind: "SEA",  code: "BLK", bbox: [27, 40, 42, 48]  },
+  { name: "Caspian Sea",          kind: "SEA",  code: "CSP", bbox: [47, 36, 55, 47]  },
+  { name: "Red Sea",              kind: "SEA",  code: "RED", bbox: [32, 12, 44, 30]  },
+  { name: "Persian Gulf",         kind: "GULF", code: "PGF", bbox: [48, 24, 57, 30]  },
+  { name: "Arabian Sea",          kind: "SEA",  code: "ARB", bbox: [50, 0,  75, 25]  },
+  { name: "Bay of Bengal",        kind: "BAY",  code: "BEN", bbox: [78, 5,  95, 22]  },
+  { name: "South China Sea",      kind: "SEA",  code: "SCS", bbox: [99, 0,  121, 23] },
+  { name: "East China Sea",       kind: "SEA",  code: "ECS", bbox: [120,23, 131, 34] },
+  { name: "Sea of Japan",         kind: "SEA",  code: "JPN", bbox: [128,34, 142, 52] },
+  { name: "Sea of Okhotsk",       kind: "SEA",  code: "OKH", bbox: [135,43, 164, 62] },
+  { name: "Bering Sea",           kind: "SEA",  code: "BER", bbox: [164,52, 200, 66] }, // wraps past 180
+  { name: "Philippine Sea",       kind: "SEA",  code: "PHL", bbox: [121,5,  145, 32] },
+  { name: "Coral Sea",            kind: "SEA",  code: "CRL", bbox: [142,-30,170,-8]  },
+  { name: "Tasman Sea",           kind: "SEA",  code: "TAS", bbox: [148,-48,175,-30] },
+  { name: "Gulf of Mexico",       kind: "GULF", code: "GMX", bbox: [-98,18, -80, 31] },
+  { name: "Caribbean Sea",        kind: "SEA",  code: "CAR", bbox: [-88,8,  -60, 22] },
+  { name: "Hudson Bay",           kind: "BAY",  code: "HDB", bbox: [-95,51, -75, 66] },
+  { name: "Labrador Sea",         kind: "SEA",  code: "LAB", bbox: [-65,52, -45, 65] },
+  { name: "North Sea",            kind: "SEA",  code: "NTH", bbox: [-4, 51,  9, 61]  },
+  { name: "Baltic Sea",           kind: "SEA",  code: "BAL", bbox: [10, 54, 30, 66]  },
+  { name: "Norwegian Sea",        kind: "SEA",  code: "NWS", bbox: [-10,62, 20, 76]  },
+  { name: "Barents Sea",          kind: "SEA",  code: "BRN", bbox: [20, 68, 60, 82]  },
+
+  // ——— OCEANS (catch-all) ———
+  { name: "Arctic Ocean",         kind: "OCEAN",code: "ARC", bbox: [-180,66, 180, 90] },
+  { name: "Southern Ocean",       kind: "OCEAN",code: "SOU", bbox: [-180,-90,180,-60]},
+  { name: "North Atlantic Ocean", kind: "OCEAN",code: "NAT", bbox: [-80, 0, 20, 66]  },
+  { name: "South Atlantic Ocean", kind: "OCEAN",code: "SAT", bbox: [-70,-60, 20, 0]  },
+  { name: "North Pacific Ocean",  kind: "OCEAN",code: "NPC", bbox: [120, 0, 260, 66] }, // 120E..100W
+  { name: "South Pacific Ocean",  kind: "OCEAN",code: "SPC", bbox: [140,-60, 290,0]  }, // 140E..70W
+  { name: "Indian Ocean",         kind: "OCEAN",code: "IND", bbox: [20,-60, 120, 25] },
+];
+
+// Ticker map
+window.SEA_TICKERS = {
+  NAT:"WAVE.NA", SAT:"WAVE.SA", NPC:"WAVE.NP", SPC:"WAVE.SP",
+  IND:"WAVE.IO", ARC:"WAVE.AR", SOU:"WAVE.SO",
+  MED:"BRINE.MED", BLK:"BRINE.BLK", CSP:"BRINE.CSP", RED:"BRINE.RED",
+  PGF:"CRUDE.GULF", ARB:"BRINE.ARB", BEN:"BRINE.BEN", SCS:"BRINE.SCS",
+  ECS:"BRINE.ECS", JPN:"BRINE.JPN", OKH:"BRINE.OKH", BER:"BRINE.BER",
+  PHL:"BRINE.PHL", CRL:"REEF.CRL", TAS:"BRINE.TAS",
+  GMX:"CRUDE.GMX", CAR:"BRINE.CAR", HDB:"BRINE.HDB", LAB:"BRINE.LAB",
+  NTH:"CRUDE.NTH", BAL:"BRINE.BAL", NWS:"BRINE.NWS", BRN:"BRINE.BRN"
+};
+
+</script>
+<script>
+// Market HUD — ticker, events, portfolio sparkline. No UI framework; tiny DOM.
+(function(){
+  const SYMS = [
+    ["MNG","100","+0.00%","dn"],
+    ["IA29","100","+0.00%","dn"],
+    ["MD07","100","+0.00%","dn"],
+    ["QAT","100","+0.00%","dn"],
+    ["BOL","100","+0.00%","dn"],
+    ["BHR","100","+0.00%","dn"],
+    ["ARM","100","+0.00%","dn"],
+    ["NV36","100","+0.00%","dn"],
+    ["PRT","100","+0.00%","dn"],
+    ["FL27","100","+0.00%","dn"],
+    ["NIC","100","+0.00%","dn"],
+    ["YEM","100","+0.00%","dn"],
+    ["TKM","100","+0.00%","dn"],
+    ["KWT","100","+0.00%","dn"],
+    ["ME23","100","+0.00%","dn"],
+    ["MWI","100","+0.00%","dn"],
+    ["FJI","100","+0.00%","dn"],
+    ["NH09","100","+0.00%","dn"],
+    ["SC08","100","+0.00%","dn"],
+    ["MO24","100","+0.00%","dn"],
+    ["ATG","100","+0.00%","dn"],
+    ["AUT","100","+0.00%","dn"],
+    ["IRQ","100","+0.00%","dn"],
+    ["MLI","100","+0.00%","dn"],
+    ["ZMB","100","+0.00%","dn"],
+    ["LBN","100","+0.00%","dn"],
+    ["AFG","100","+0.00%","dn"],
+    ["PNG","100","+0.00%","dn"]
+  ];
+
+  const ticker = document.createElement("div");
+  ticker.className = "ticker hud";
+  ticker.innerHTML = `<div class="label">LIVE</div>`;
+  const track = document.createElement("div");
+  track.className = "ticker-track";
+  const double = SYMS.concat(SYMS); // seamless loop
+  track.innerHTML = double.map(([s,p,c,dir])=>`
+    <span class="ticker-item">
+      <span class="sym">${s}</span>
+      <span class="px">${p}</span>
+      <span class="chg ${dir}">${c}</span>
+    </span>`).join("");
+  ticker.appendChild(track);
+  document.getElementById("root").appendChild(ticker);
+
+  // Sparkline
+  const spark = document.getElementById("spark");
+  const W = 260, H = 60;
+  const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
+  svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+  const pts = [];
+  let y = H*0.6;
+  for(let i=0;i<64;i++){
+    y += (Math.sin(i*0.6)+Math.cos(i*0.21))*3 + (Math.random()-0.5)*4;
+    y = Math.max(8, Math.min(H-8, y));
+    pts.push([i/(63)*W, y]);
+  }
+  const d = pts.map((p,i)=> (i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+  const area = d + ` L ${W} ${H} L 0 ${H} Z`;
+  svg.innerHTML = `
+    <path d="${area}" fill="rgba(57,255,136,.15)"/>
+    <path d="${d}" fill="none" stroke="var(--g)" stroke-width="1.2" stroke-linejoin="round"/>
+    <circle cx="${pts[pts.length-1][0]}" cy="${pts[pts.length-1][1]}" r="2.4" fill="var(--g)"/>
+  `;
+  spark.appendChild(svg);
+
+  // Events
+  const events = [
+    { t:"04:17", kind:"alert", b:"CHN.RARE", msg:"— circuit breaker triggered, down 7.2% in 4m" },
+    { t:"04:16", kind:"warn",  b:"JPN.SEMI", msg:"— fab-7 output revised +12%, limit-up bid" },
+    { t:"04:14", kind:"",      b:"BRA.SOY",  msg:"— USDA report in T-6m, straddles heating up" },
+    { t:"04:12", kind:"",      b:"PLAYER 'KASHA'", msg:"closed long UKR.WHEAT +$84k" },
+    { t:"04:10", kind:"warn",  b:"WAVE.NP",  msg:"— typhoon Meari forming, shipping lanes rerouted" },
+    { t:"04:07", kind:"",      b:"SAU.CRUDE",msg:"— OPEC+ leak: production cut 500kbpd" },
+    { t:"04:04", kind:"alert", b:"ZAF.GOLD", msg:"— mine strike enters day 14, delisting risk" },
+    { t:"04:01", kind:"",      b:"IDN.PALM", msg:"— monsoon forecast downgraded to 'wet'" },
+    { t:"03:58", kind:"",      b:"LUNA MARKET", msg:"opens in 14d. Pre-reg 2.1M" },
+    { t:"03:54", kind:"warn",  b:"TUR.LITH", msg:"— EU battery mandate passes first reading" },
+  ];
+  const list = document.getElementById("evList");
+  list.innerHTML = events.map(e=>`
+    <div class="ev ${e.kind}">
+      <div class="t">${e.t}</div>
+      <div class="msg"><b>${e.b}</b> ${e.msg}</div>
+    </div>`).join("");
+
+  // Session time
+  const sess = document.getElementById("session");
+  function tick(){
+    const d = new Date();
+    const h = String(d.getUTCHours()).padStart(2,"0");
+    const m = String(d.getUTCMinutes()).padStart(2,"0");
+    const s = String(d.getUTCSeconds()).padStart(2,"0");
+    sess.textContent = `${h}:${m}:${s}Z`;
+  }
+  tick(); setInterval(tick, 1000);
+
+  // Ticker jitter — subtle nudge of one price every 2s
+  setInterval(()=>{
+    const items = track.querySelectorAll(".ticker-item .px");
+    if(!items.length) return;
+    const i = Math.floor(Math.random()*items.length);
+    const n = parseFloat(items[i].textContent.replace(/,/g,""));
+    if(!isNaN(n)){
+      const d = n * (Math.random()*0.01 - 0.005);
+      const v = n + d;
+      items[i].textContent = v >= 1000
+        ? v.toLocaleString("en-US",{maximumFractionDigits:0})
+        : v.toFixed(2);
+    }
+  }, 2000);
+})();
+
+</script>
+<script>
+// globe.js — three.js dark sphere with country/sea outlines, raycast hover/click,
+// US states on hover, DC pulsing star, auto-rotate, tweaks.
+
+(async function(){
+  const status = document.getElementById("loadStatus");
+  const setStatus = t => status && (status.textContent = t);
+
+  // ————————————————————————— DATA —————————————————————————
+  setStatus("FETCHING WORLD ATLAS…");
+  const [world, us] = await Promise.all([
+    fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json").then(r=>r.json()),
+    fetch("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json").then(r=>r.json()),
+  ]);
+
+  setStatus("PROJECTING ONTO SPHERE…");
+  const countries = topojson.feature(world, world.objects.countries).features;
+  const usStates = topojson.feature(us, us.objects.states).features;
+
+  // ————————————————————————— THREE SETUP —————————————————————————
+  const canvas = document.getElementById("globe");
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x000000, 0);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(38, window.innerWidth/window.innerHeight, 0.1, 1000);
+  camera.position.set(0, 0, 4.5);
+
+  // Sphere (dark with subtle fresnel rim)
+  const R = 1.5;
+  const sphereGeo = new THREE.SphereGeometry(R, 96, 96);
+  const sphereMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uGreen: { value: new THREE.Color(0x39ff88) },
+      uTime:  { value: 0 },
+    },
+    vertexShader: `
+      varying vec3 vNormal; varying vec3 vPos;
+      void main(){
+        vNormal = normalize(normalMatrix * normal);
+        vPos = position;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+      }`,
+    fragmentShader: `
+      uniform vec3 uGreen; uniform float uTime;
+      varying vec3 vNormal; varying vec3 vPos;
+      void main(){
+        float f = pow(1.0 - max(dot(vNormal, vec3(0,0,1)), 0.0), 2.0);
+        vec3 base = vec3(0.005, 0.012, 0.008);
+        vec3 rim = uGreen * f * 0.35;
+        // faint meridian/parallel grid
+        float lat = asin(normalize(vPos).y);
+        float lon = atan(normalize(vPos).z, normalize(vPos).x);
+        float g1 = smoothstep(0.02, 0.0, abs(mod(lat*180.0/3.14159 + 90.0, 15.0) - 7.5) - 7.3);
+        float g2 = smoothstep(0.02, 0.0, abs(mod(lon*180.0/3.14159 + 180.0, 15.0) - 7.5) - 7.3);
+        vec3 grid = uGreen * (g1 + g2) * 0.05;
+        gl_FragColor = vec4(base + rim + grid, 1.0);
+      }`,
+  });
+  const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+  scene.add(sphere);
+
+  // Pickable sphere (invisible, used for raycasting against surface)
+  const pickSphere = new THREE.Mesh(
+    new THREE.SphereGeometry(R*0.999, 64, 64),
+    new THREE.MeshBasicMaterial({ visible:false })
+  );
+  scene.add(pickSphere);
+
+  // Groups
+  const worldGroup = new THREE.Group();    // parent that rotates (our "globe")
+  scene.add(worldGroup);
+  worldGroup.add(sphere);
+  worldGroup.add(pickSphere);
+
+  const bordersGroup = new THREE.Group();
+  worldGroup.add(bordersGroup);
+  const seaLinesGroup = new THREE.Group();
+  worldGroup.add(seaLinesGroup);
+  const usGroup = new THREE.Group();
+  usGroup.visible = false;
+  worldGroup.add(usGroup);
+  const highlightGroup = new THREE.Group();
+  worldGroup.add(highlightGroup);
+
+  // ————————————————————————— HELPERS —————————————————————————
+  const DEG = Math.PI/180;
+  function lngLatToVec3(lng, lat, radius=R*1.001){
+    const phi = (90 - lat) * DEG;
+    const theta = (lng + 180) * DEG;
+    return new THREE.Vector3(
+      -radius * Math.sin(phi) * Math.cos(theta),
+       radius * Math.cos(phi),
+       radius * Math.sin(phi) * Math.sin(theta)
+    );
+  }
+  function vec3ToLngLat(v){
+    const p = v.clone().normalize();
+    const lat = 90 - (Math.acos(p.y) * 180 / Math.PI);
+    const lng = ((Math.atan2(p.z, -p.x) * 180 / Math.PI) - 180 + 540) % 360 - 180;
+    return [lng, lat];
+  }
+
+  // Subdivide a great-circle segment so the line hugs the sphere
+  function subdivide(ring, maxDeg = 2){
+    const out = [];
+    for(let i=0;i<ring.length-1;i++){
+      const [a0,a1] = [ring[i], ring[i+1]];
+      const d = Math.max(Math.abs(a1[0]-a0[0]), Math.abs(a1[1]-a0[1]));
+      const n = Math.max(1, Math.ceil(d/maxDeg));
+      for(let k=0;k<n;k++){
+        const t = k/n;
+        out.push([a0[0]+(a1[0]-a0[0])*t, a0[1]+(a1[1]-a0[1])*t]);
+      }
+    }
+    out.push(ring[ring.length-1]);
+    return out;
+  }
+
+  function ringToPositions(ring, radius=R*1.002){
+    const sub = subdivide(ring, 2);
+    const arr = new Float32Array(sub.length*3);
+    for(let i=0;i<sub.length;i++){
+      const v = lngLatToVec3(sub[i][0], sub[i][1], radius);
+      arr[i*3] = v.x; arr[i*3+1] = v.y; arr[i*3+2] = v.z;
+    }
+    return arr;
+  }
+
+  function addFeatureOutline(feature, group, { color=0x39ff88, opacity=0.75, radius=R*1.002 }={}){
+    const g = feature.geometry; if(!g) return [];
+    const polys = g.type === "Polygon" ? [g.coordinates] : g.coordinates;
+    const lines = [];
+    for(const poly of polys){
+      for(const ring of poly){
+        const pos = ringToPositions(ring, radius);
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+        const mat = new THREE.LineBasicMaterial({ color, transparent:true, opacity });
+        const line = new THREE.LineLoop(geo, mat);
+        line.userData.feature = feature;
+        group.add(line);
+        lines.push(line);
+      }
+    }
+    return lines;
+  }
+
+  // Point-in-ring (spherical approx — use lng/lat as planar for small-region test)
+  function pointInRing(lng, lat, ring){
+    let inside = false;
+    for(let i=0, j=ring.length-1; i<ring.length; j=i++){
+      const xi = ring[i][0], yi = ring[i][1];
+      const xj = ring[j][0], yj = ring[j][1];
+      const intersect = ((yi>lat) !== (yj>lat)) &&
+        (lng < (xj-xi) * (lat-yi) / (yj-yi || 1e-12) + xi);
+      if(intersect) inside = !inside;
+    }
+    return inside;
+  }
+  function pointInFeature(lng, lat, feature){
+    const g = feature.geometry; if(!g) return false;
+    const polys = g.type === "Polygon" ? [g.coordinates] : g.coordinates;
+    for(const poly of polys){
+      if(pointInRing(lng, lat, poly[0])){
+        let inHole = false;
+        for(let i=1;i<poly.length;i++){ if(pointInRing(lng, lat, poly[i])){ inHole = true; break; } }
+        if(!inHole) return true;
+      }
+    }
+    return false;
+  }
+
+  // Bounding-box fast path for seas (supports wrapping past 180)
+  function pointInSea(lng, lat, sea){
+    let [mnLng, mnLat, mxLng, mxLat] = sea.bbox;
+    if(lat < mnLat || lat > mxLat) return false;
+    if(mxLng > 180){
+      const shifted = lng < 0 ? lng + 360 : lng;
+      return shifted >= mnLng && shifted <= mxLng;
+    }
+    return lng >= mnLng && lng <= mxLng;
+  }
+
+  // ————————————————————————— BUILD OUTLINES —————————————————————————
+  setStatus("DRAWING BORDERS…");
+  const THICK = window.__TWEAKS__.thickness;
+  const HUE = new THREE.Color(window.__TWEAKS__.hue);
+  const HUE_DIM = HUE.clone().multiplyScalar(0.45);
+
+  // Countries
+  const countryLines = [];
+  for(const f of countries){
+    const ls = addFeatureOutline(f, bordersGroup, { color: HUE, opacity: 0.85 });
+    countryLines.push({ feature: f, lines: ls });
+  }
+
+  // US states (hidden by default)
+  const stateLines = [];
+  for(const f of usStates){
+    const ls = addFeatureOutline(f, usGroup, { color: HUE_DIM, opacity: 0.7, radius: R*1.003 });
+    stateLines.push({ feature: f, lines: ls });
+  }
+
+  // Sea region dividers: draw bbox rectangles as faint line loops
+  function addSeaBoxLines(){
+    seaLinesGroup.clear();
+    for(const s of window.SEAS){
+      if(s.kind === "OCEAN") continue; // skip oceans for lines — too huge
+      const [a,b,c,d] = s.bbox;
+      const ring = [];
+      const steps = 24;
+      // bottom (a->c, lat=b)
+      for(let i=0;i<=steps;i++) ring.push([a + (c-a)*i/steps, b]);
+      for(let i=0;i<=steps;i++) ring.push([c, b + (d-b)*i/steps]);
+      for(let i=0;i<=steps;i++) ring.push([c - (c-a)*i/steps, d]);
+      for(let i=0;i<=steps;i++) ring.push([a, d - (d-b)*i/steps]);
+      const pos = ringToPositions(ring, R*1.001);
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.BufferAttribute(pos,3));
+      const mat = new THREE.LineBasicMaterial({ color: HUE, transparent:true, opacity: 0.18 });
+      const line = new THREE.LineLoop(geo, mat);
+      line.userData.sea = s;
+      seaLinesGroup.add(line);
+    }
+  }
+  addSeaBoxLines();
+
+  // ————————————————————————— DC STAR —————————————————————————
+  const DC = [-77.0369, 38.9072];
+  const dcPos = lngLatToVec3(DC[0], DC[1], R*1.008);
+  const dcGroup = new THREE.Group();
+  // Star sprite (canvas texture)
+  const starCanvas = document.createElement("canvas");
+  starCanvas.width = starCanvas.height = 128;
+  const sctx = starCanvas.getContext("2d");
+  sctx.translate(64,64);
+  sctx.fillStyle = "#39ff88";
+  sctx.shadowColor = "#39ff88";
+  sctx.shadowBlur = 24;
+  sctx.beginPath();
+  for(let i=0;i<10;i++){
+    const a = i * Math.PI/5 - Math.PI/2;
+    const r = i%2===0 ? 44 : 18;
+    const x = Math.cos(a)*r, y = Math.sin(a)*r;
+    if(i===0) sctx.moveTo(x,y); else sctx.lineTo(x,y);
+  }
+  sctx.closePath();
+  sctx.fill();
+  const starTex = new THREE.CanvasTexture(starCanvas);
+  const starMat = new THREE.SpriteMaterial({ map:starTex, color:0x39ff88, transparent:true });
+  const starSprite = new THREE.Sprite(starMat);
+  starSprite.position.copy(dcPos);
+  starSprite.scale.setScalar(0.08);
+  dcGroup.add(starSprite);
+  // halo ring
+  const haloGeo = new THREE.RingGeometry(0.02, 0.06, 32);
+  const haloMat = new THREE.MeshBasicMaterial({ color:0x39ff88, transparent:true, opacity:0.3, side:THREE.DoubleSide });
+  const halo = new THREE.Mesh(haloGeo, haloMat);
+  halo.position.copy(dcPos);
+  halo.lookAt(0,0,0); halo.rotateY(Math.PI);
+  dcGroup.add(halo);
+  worldGroup.add(dcGroup);
+
+  // ————————————————————————— CRT HOVER EFFECT —————————————————————————
+  // Hovered region gets duplicate white/hue lines at slightly higher radius + shader-like scanline using a moving offset.
+  let hoveredKey = null;
+  let hoverLines = []; // extra lines we created for the hover effect
+
+  function clearHover(){
+    hoverLines.forEach(l => { highlightGroup.remove(l); l.geometry.dispose(); l.material.dispose(); });
+    hoverLines = [];
+  }
+  function highlightFeature(feature, asCountry){
+    clearHover();
+    if(!feature) return;
+    const g = feature.geometry; if(!g) return;
+    const polys = g.type === "Polygon" ? [g.coordinates] : g.coordinates;
+    const mode = window.__TWEAKS__.hoverEffect;
+    const col = new THREE.Color(window.__TWEAKS__.hue);
+
+    for(const poly of polys){
+      for(const ring of poly){
+        const pos = ringToPositions(ring, R*1.010);
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+        const mat = new THREE.LineBasicMaterial({
+          color: 0xffffff,
+          transparent:true, opacity: mode === "glow" ? 0.95 : 0.85,
+          linewidth: 2,
+        });
+        const line = new THREE.LineLoop(geo, mat);
+        line.userData.hoverBright = true;
+        highlightGroup.add(line);
+        hoverLines.push(line);
+
+        // outer glow / fill
+        if(mode === "glow" || mode === "fill"){
+          const pos2 = ringToPositions(ring, R*1.012);
+          const geo2 = new THREE.BufferGeometry();
+          geo2.setAttribute("position", new THREE.BufferAttribute(pos2, 3));
+          const mat2 = new THREE.LineBasicMaterial({ color: col, transparent:true, opacity:0.5 });
+          const l2 = new THREE.LineLoop(geo2, mat2);
+          highlightGroup.add(l2);
+          hoverLines.push(l2);
+        }
+        if(mode === "fill"){
+          // fill using a triangulated surface — fall back to thicker double line
+          const pos3 = ringToPositions(ring, R*1.008);
+          const geo3 = new THREE.BufferGeometry();
+          geo3.setAttribute("position", new THREE.BufferAttribute(pos3, 3));
+          const mat3 = new THREE.LineBasicMaterial({ color: col, transparent:true, opacity:0.25 });
+          highlightGroup.add(new THREE.LineLoop(geo3, mat3));
+        }
+      }
+    }
+  }
+
+  // Scanline overlay (CSS div positioned over the bounding box of the hovered region)
+  const scanOverlay = document.createElement("div");
+  scanOverlay.style.cssText = `
+    position:fixed; pointer-events:none; z-index:17;
+    border:1px solid rgba(57,255,136,.5);
+    background:
+      repeating-linear-gradient(to bottom, rgba(57,255,136,.1) 0px, rgba(57,255,136,.1) 1px, transparent 1px, transparent 4px),
+      linear-gradient(rgba(57,255,136,.05), rgba(57,255,136,.12));
+    mix-blend-mode:screen;
+    display:none;
+    box-shadow:0 0 12px rgba(57,255,136,.4), inset 0 0 20px rgba(57,255,136,.15);
+  `;
+  document.body.appendChild(scanOverlay);
+  const scanLabel = document.createElement("div");
+  scanLabel.style.cssText = `
+    position:fixed; pointer-events:none; z-index:18;
+    font-family:'JetBrains Mono',monospace; font-size:9px;
+    color:#39ff88; letter-spacing:.15em; padding:2px 6px;
+    background:rgba(0,0,0,.85); border:1px solid rgba(57,255,136,.5);
+    display:none; text-shadow:0 0 4px rgba(57,255,136,.5);
+  `;
+  document.body.appendChild(scanLabel);
+
+  function positionScanOverlay(feature){
+    if(!feature || window.__TWEAKS__.hoverEffect !== "scanline"){
+      scanOverlay.style.display = "none"; scanLabel.style.display="none"; return;
+    }
+    // project bbox of feature via current camera
+    const g = feature.geometry; if(!g) return;
+    const polys = g.type === "Polygon" ? [g.coordinates] : g.coordinates;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    const rect = renderer.domElement.getBoundingClientRect();
+    let anyVisible = false;
+    const camDir = new THREE.Vector3();
+    camera.getWorldDirection(camDir);
+    for(const poly of polys){
+      for(const ring of poly){
+        const step = Math.max(1, Math.floor(ring.length/40));
+        for(let i=0;i<ring.length;i+=step){
+          const v = lngLatToVec3(ring[i][0], ring[i][1], R*1.01);
+          v.applyMatrix4(worldGroup.matrixWorld);
+          // check front-facing
+          const dot = v.clone().normalize().dot(camera.position.clone().normalize());
+          if(dot < 0.15) continue;
+          anyVisible = true;
+          const p = v.clone().project(camera);
+          const x = rect.left + (p.x*0.5+0.5) * rect.width;
+          const y = rect.top + (-p.y*0.5+0.5) * rect.height;
+          minX = Math.min(minX,x); maxX = Math.max(maxX,x);
+          minY = Math.min(minY,y); maxY = Math.max(maxY,y);
+        }
+      }
+    }
+    if(!anyVisible || maxX - minX < 4 || maxY - minY < 4){
+      scanOverlay.style.display="none"; scanLabel.style.display="none"; return;
+    }
+    scanOverlay.style.left = minX + "px";
+    scanOverlay.style.top = minY + "px";
+    scanOverlay.style.width = (maxX - minX) + "px";
+    scanOverlay.style.height = (maxY - minY) + "px";
+    scanOverlay.style.display = "block";
+    scanLabel.style.left = minX + "px";
+    scanLabel.style.top = (minY - 16) + "px";
+    scanLabel.style.display = "block";
+  }
+
+  // ————————————————————————— INTERACTION —————————————————————————
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2(999,999);
+  let hoverFeature = null;
+  let hoverKind = null; // "country"|"sea"|"state"
+  let selected = null;
+  let rotating = true;
+  let userInteracting = false;
+  let dragStart = null;
+  let rotY = 0, rotX = 0;
+  let targetZ = 4.5;
+
+  const cursorHud = document.getElementById("cursorHud");
+
+  function onMove(e){
+    const rect = renderer.domElement.getBoundingClientRect();
+    mouse.x = ((e.clientX - rect.left)/rect.width) * 2 - 1;
+    mouse.y = -((e.clientY - rect.top)/rect.height) * 2 + 1;
+    cursorHud.style.left = e.clientX + "px";
+    cursorHud.style.top = e.clientY + "px";
+
+    if(userInteracting && dragStart){
+      const dx = e.clientX - dragStart.x;
+      const dy = e.clientY - dragStart.y;
+      rotY = dragStart.rotY + dx * 0.005;
+      rotX = Math.max(-1.2, Math.min(1.2, dragStart.rotX + dy * 0.005));
+      rotating = false;
+      document.getElementById("btn-rotate").classList.remove("on");
+    }
+  }
+  function onDown(e){
+    userInteracting = true;
+    dragStart = { x:e.clientX, y:e.clientY, rotY, rotX };
+    canvas.style.cursor = "grabbing";
+  }
+  function onUp(e){
+    const moved = dragStart && (Math.abs(e.clientX - dragStart.x) + Math.abs(e.clientY - dragStart.y) > 5);
+    userInteracting = false; dragStart = null;
+    canvas.style.cursor = "crosshair";
+    // Only fire onClick when the pointer released on the canvas itself, not on any panel/button
+    const onCanvas = e.target && (e.target.tagName === 'CANVAS' || e.target.id === 'globe');
+    if(!moved && onCanvas){ onClick(e); }
+  }
+  function onWheel(e){
+    e.preventDefault();
+    targetZ = Math.max(2.1, Math.min(7, targetZ + e.deltaY * 0.003));
+  }
+  function onClick(){
+    if(hoverFeature){
+      selected = { feature: hoverFeature, kind: hoverKind };
+      showRegionCard(selected);
+    } else {
+      hideRegionCard();
+    }
+  }
+  canvas.addEventListener("pointermove", onMove);
+  canvas.addEventListener("pointerdown", onDown);
+  window.addEventListener("pointerup", onUp);
+  canvas.addEventListener("wheel", onWheel, { passive:false });
+  canvas.style.cursor = "crosshair";
+
+  // ————————————————————————— HIT TESTING —————————————————————————
+  function hitTest(){
+    raycaster.setFromCamera(mouse, camera);
+    const hits = raycaster.intersectObject(pickSphere, false);
+    if(!hits.length) return null;
+    const p = hits[0].point.clone();
+    // convert to local (unrotated) sphere coords
+    p.applyMatrix4(worldGroup.matrixWorld.clone().invert());
+    const [lng, lat] = vec3ToLngLat(p);
+
+    // 1) If USA zone shown, check states first
+    if(usGroup.visible){
+      for(const {feature} of stateLines){
+        if(pointInFeature(lng, lat, feature)){
+          return { feature, kind: "state", lng, lat };
+        }
+      }
+    }
+    // 2) Countries
+    for(const {feature} of countryLines){
+      if(pointInFeature(lng, lat, feature)){
+        return { feature, kind: "country", lng, lat };
+      }
+    }
+    // 3) Seas
+    for(const s of window.SEAS){
+      if(pointInSea(lng, lat, s)){
+        return {
+          feature: { properties:{ name: s.name }, _sea: s, geometry: seaBoxGeom(s) },
+          kind: "sea", lng, lat
+        };
+      }
+    }
+    return { feature:null, kind:null, lng, lat };
+  }
+  function seaBoxGeom(s){
+    const [a,b,c,d] = s.bbox;
+    const cAdj = c > 180 ? 180 : c;
+    return { type:"Polygon", coordinates:[[[a,b],[cAdj,b],[cAdj,d],[a,d],[a,b]]] };
+  }
+
+  // ————————————————————————— REGION CARD —————————————————————————
+  const rc = document.getElementById("regionCard");
+  const rcKind = document.getElementById("rc-kind");
+  const rcName = document.getElementById("rc-name");
+  const rcCoord = document.getElementById("rc-coord");
+  const rcCode = document.getElementById("rc-code");
+  const rcStatus = document.getElementById("rc-status");
+  const rcTicker = document.getElementById("rc-ticker");
+  const rcLast = document.getElementById("rc-last");
+  const rcChg = document.getElementById("rc-chg");
+  const rcVol = document.getElementById("rc-vol");
+
+  // STOX BALLZ ticker map: state name -> [2-letter code, statehood order]
+  // DC = 51, DE = 01, HI = 50, etc.
+  const STATE_TICKERS = {
+    "Delaware":["DE",1],"Pennsylvania":["PA",2],"New Jersey":["NJ",3],"Georgia":["GA",4],
+    "Connecticut":["CT",5],"Massachusetts":["MA",6],"Maryland":["MD",7],"South Carolina":["SC",8],
+    "New Hampshire":["NH",9],"Virginia":["VA",10],"New York":["NY",11],"North Carolina":["NC",12],
+    "Rhode Island":["RI",13],"Vermont":["VT",14],"Kentucky":["KY",15],"Tennessee":["TN",16],
+    "Ohio":["OH",17],"Louisiana":["LA",18],"Indiana":["IN",19],"Mississippi":["MS",20],
+    "Illinois":["IL",21],"Alabama":["AL",22],"Maine":["ME",23],"Missouri":["MO",24],
+    "Arkansas":["AR",25],"Michigan":["MI",26],"Florida":["FL",27],"Texas":["TX",28],
+    "Iowa":["IA",29],"Wisconsin":["WI",30],"California":["CA",31],"Minnesota":["MN",32],
+    "Oregon":["OR",33],"Kansas":["KS",34],"West Virginia":["WV",35],"Nevada":["NV",36],
+    "Nebraska":["NE",37],"Colorado":["CO",38],"North Dakota":["ND",39],"South Dakota":["SD",40],
+    "Montana":["MT",41],"Washington":["WA",42],"Idaho":["ID",43],"Wyoming":["WY",44],
+    "Utah":["UT",45],"Oklahoma":["OK",46],"New Mexico":["NM",47],"Arizona":["AZ",48],
+    "Alaska":["AK",49],"Hawaii":["HI",50],"District of Columbia":["DC",51]
+  };
+  function hashStr(s){ let h=0; for(let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i))|0; return h; }
+function synth(name, kind){
+    // Try real StoxBallz world state first
+    const stoxData = getStoxForRegion(name, kind);
+    if(stoxData){
+      const chg = parseFloat(stoxData.pct)||0;
+      return {
+        ticker: stoxData.ticker,
+        last: "$" + parseFloat(stoxData.price).toFixed(2),
+        chg: (chg>=0?"+":"") + chg.toFixed(2) + "%",
+        pos: chg >= 0,
+        vol: stoxData.volatility || "—",
+        sourceId: stoxData.source_id,
+        rank: stoxData.rank,
+        momentum: stoxData.momentum,
+        resilience: stoxData.resilience,
+        realData: true,
+      };
+    }
+    // Fallback for unmapped regions
+    const h = Math.abs(hashStr(name));
+    return {
+      ticker: name.slice(0,3).toUpperCase() + "." + ["GEO","REG","ZN"][h%3],
+      last: "—",
+      chg: "—",
+      pos: false,
+      vol: "—",
+      sourceId: null,
+      realData: false,
+    };
+  }
+
+function showRegionCard(sel){
+    const f = sel.feature;
+    if(!f) return;
+    const name = f.properties?.name || "UNKNOWN";
+    let kindLabel, code;
+    if(sel.kind === "country"){ kindLabel = "SOVEREIGN STATE"; code = `ISO-3166 ${f.id || "——"}`; }
+    else if(sel.kind === "state"){
+      const entry = STATE_TICKERS[name];
+      kindLabel = "STOX BALLZ // US STATE";
+      code = entry ? `${entry[0]}${String(entry[1]).padStart(2,"0")} · FIPS ${f.id || "——"}` : `FIPS ${f.id || "——"}`;
+    }
+    else { kindLabel = f._sea?.kind || "MARINE REGION"; code = `IHO ${f._sea?.code || "——"}`; }
+
+    rcKind.textContent = kindLabel;
+    rcName.textContent = name;
+    rcCoord.textContent = fmtCoord(sel.lng, sel.lat);
+    rcCode.textContent = code;
+    rcStatus.textContent = sel.kind === "sea" && f._sea?.kind === "OCEAN" ? "HIGH SEAS" : "TRADABLE";
+
+    const s = synth(name, sel.kind);
+    rcTicker.textContent = s.ticker;
+    rcLast.textContent = s.last;
+    rcChg.textContent = s.chg; rcChg.className = "v " + (s.pos ? "pos":"neg");
+    rcLast.className = "v " + (s.pos ? "pos":"neg");
+    rcVol.textContent = s.vol || "—";
+
+    // Extra stox fields if real data
+    window._currentMapStox = s.sourceId ? { sourceId: s.sourceId, name } : null;
+    document.getElementById("rc-trade-msg").textContent = "";
+
+    // Show/update extra trait row if we have real data
+    let extra = document.getElementById("rc-extra");
+    if(!extra){ extra = document.createElement("div"); extra.id="rc-extra"; extra.style.cssText="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"; rc.querySelector(".rc-col").appendChild(extra); }
+    if(s.realData && s.rank){
+      extra.innerHTML = `<span class="tag"><span class="dot"></span>${s.rank}</span><span class="tag"><span class="dot"></span>${s.momentum}</span><span class="tag"><span class="dot"></span>${s.resilience}</span>`;
+    } else { extra.innerHTML = ""; }
+
+    // Update buy btn label
+    const owned = window._DIGIBANX?.portfolio?.[s.sourceId];
+    document.getElementById("rc-buy-btn").innerHTML = "BUY <span class='arr'>▲</span>";
+    document.getElementById("rc-sell-btn").style.display = owned ? "" : "none";
+
+    rc.classList.remove("hidden"); rc.classList.add("show");
+    rc.onpointerdown = e => e.stopPropagation();
+  }
+
+  function hideRegionCard(){
+    rc.classList.remove("show"); rc.classList.add("hidden");
+    selected = null;
+  }
+  function fmtCoord(lng, lat){
+    const la = Math.abs(lat).toFixed(2) + "° " + (lat>=0?"N":"S");
+    const lo = Math.abs(lng).toFixed(2) + "° " + (lng>=0?"E":"W");
+    return `${la} / ${lo}`;
+  }
+
+  // ————————————————————————— CONTROLS —————————————————————————
+  const btnRotate = document.getElementById("btn-rotate");
+  const btnReset = document.getElementById("btn-reset");
+  const btnUs = document.getElementById("btn-us");
+  btnRotate.classList.add("on");
+  btnRotate.style.background = "rgba(57,255,136,.08)";
+  btnRotate.style.color = "#39ff88";
+  btnRotate.style.borderColor = "rgba(57,255,136,.5)";
+  btnRotate.addEventListener("click", ()=>{
+    rotating = !rotating;
+    btnRotate.style.background = rotating ? "rgba(57,255,136,.08)" : "";
+    btnRotate.style.color = rotating ? "#39ff88" : "";
+    btnRotate.style.borderColor = rotating ? "rgba(57,255,136,.5)" : "";
+  });
+  btnReset.addEventListener("click", ()=>{
+    rotY = 0; rotX = 0; targetZ = 4.5; hideRegionCard();
+  });
+  btnUs.addEventListener("click", ()=>{
+    // pan to US
+    const [tLng, tLat] = [-96, 39];
+    rotY = -tLng * DEG; rotX = tLat * DEG;
+    targetZ = 2.6;
+    rotating = false; btnRotate.style.background=""; btnRotate.style.color=""; btnRotate.style.borderColor="";
+  });
+
+  // ————————————————————————— STARFIELD —————————————————————————
+  const sf = document.getElementById("starfield");
+  const sfCtx = sf.getContext("2d");
+  let stars = [];
+  function genStars(){
+    sf.width = window.innerWidth; sf.height = window.innerHeight;
+    stars = [];
+    const n = window.__TWEAKS__.background === "stars" ? 200 : 0;
+    for(let i=0;i<n;i++){
+      stars.push({
+        x: Math.random()*sf.width,
+        y: Math.random()*sf.height,
+        r: Math.random()*1.2 + 0.3,
+        tw: Math.random()*Math.PI*2,
+      });
+    }
+  }
+  genStars();
+  function drawStars(t){
+    sfCtx.clearRect(0,0,sf.width,sf.height);
+    for(const s of stars){
+      const a = 0.4 + 0.4*Math.sin(t*0.001 + s.tw);
+      sfCtx.fillStyle = `rgba(190,255,210,${a})`;
+      sfCtx.beginPath(); sfCtx.arc(s.x, s.y, s.r, 0, Math.PI*2); sfCtx.fill();
+    }
+  }
+
+  // Apply background
+  function applyBackground(v){
+    document.body.classList.remove("bg-black","bg-stars","bg-grid");
+    document.body.classList.add("bg-"+v);
+    window.__TWEAKS__.background = v;
+    genStars();
+  }
+  applyBackground(window.__TWEAKS__.background);
+
+  // ————————————————————————— TWEAKS —————————————————————————
+  const tweaksEl = document.getElementById("tweaks");
+  const huesEl = document.getElementById("tw-hues");
+  const HUES = [
+    ["#00ff66","EMERALD"],
+    ["#39ff88","VIRIDIS"],
+    ["#4ade80","SAGE"],
+    ["#86efac","MINT"],
+    ["#00ffcc","CYAN"],
+  ];
+  HUES.forEach(([c,n])=>{
+    const b = document.createElement("div");
+    b.className = "tw-sw" + (c.toLowerCase()===window.__TWEAKS__.hue.toLowerCase()?" active":"");
+    b.style.background = c;
+    b.dataset.c = c; b.dataset.n = n;
+    b.addEventListener("click", ()=>{
+      huesEl.querySelectorAll(".tw-sw").forEach(x=>x.classList.remove("active"));
+      b.classList.add("active");
+      setHue(c, n);
+    });
+    huesEl.appendChild(b);
+  });
+  function setHue(c,n){
+    window.__TWEAKS__.hue = c;
+    document.getElementById("tw-hueLabel").textContent = n;
+    document.documentElement.style.setProperty("--g", c);
+    const col = new THREE.Color(c);
+    sphereMat.uniforms.uGreen.value.copy(col);
+    starMat.color.copy(col);
+    haloMat.color.copy(col);
+    bordersGroup.traverse(o=>{ if(o.isLine || o.isLineLoop) o.material.color.copy(col); });
+    seaLinesGroup.traverse(o=>{ if(o.isLine || o.isLineLoop) o.material.color.copy(col); });
+    usGroup.traverse(o=>{ if(o.isLine || o.isLineLoop) o.material.color.copy(col).multiplyScalar(0.6); });
+    persist();
+  }
+  const thickEl = document.getElementById("tw-thick");
+  const thickLab = document.getElementById("tw-thickLabel");
+  thickEl.addEventListener("input", ()=>{
+    const v = parseFloat(thickEl.value);
+    window.__TWEAKS__.thickness = v;
+    thickLab.textContent = v.toFixed(1);
+    // Three LineBasicMaterial linewidth is mostly ignored; instead, adjust opacity as a visual proxy
+    bordersGroup.traverse(o=>{ if(o.isLine || o.isLineLoop) o.material.opacity = Math.min(1, 0.55 + v*0.2); });
+    persist();
+  });
+  document.getElementById("tw-hover").querySelectorAll("button").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      document.getElementById("tw-hover").querySelectorAll("button").forEach(x=>x.classList.remove("on"));
+      b.classList.add("on");
+      window.__TWEAKS__.hoverEffect = b.dataset.v;
+      // re-render highlight
+      if(hoverFeature) highlightFeature(hoverFeature, hoverKind==="country");
+      if(b.dataset.v !== "scanline"){ scanOverlay.style.display="none"; scanLabel.style.display="none"; }
+      persist();
+    });
+  });
+  document.getElementById("tw-bg").querySelectorAll("button").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      document.getElementById("tw-bg").querySelectorAll("button").forEach(x=>x.classList.remove("on"));
+      b.classList.add("on");
+      applyBackground(b.dataset.v);
+      persist();
+    });
+  });
+  // seed segmented defaults
+  document.querySelector(`#tw-hover button[data-v="${window.__TWEAKS__.hoverEffect}"]`)?.classList.add("on");
+  document.querySelectorAll("#tw-hover button").forEach(b=>{ if(b.dataset.v!==window.__TWEAKS__.hoverEffect) b.classList.remove("on"); });
+  document.querySelector(`#tw-bg button[data-v="${window.__TWEAKS__.background}"]`)?.classList.add("on");
+  document.querySelectorAll("#tw-bg button").forEach(b=>{ if(b.dataset.v!==window.__TWEAKS__.background) b.classList.remove("on"); });
+
+  document.getElementById("twClose").addEventListener("click", ()=>{
+    tweaksEl.classList.remove("show");
+    window.parent.postMessage({type:'__deactivate_edit_mode'},'*');
+  });
+
+  // Edit-mode protocol
+  window.addEventListener("message", (e)=>{
+    const d = e.data || {};
+    if(d.type === "__activate_edit_mode") tweaksEl.classList.add("show");
+    else if(d.type === "__deactivate_edit_mode") tweaksEl.classList.remove("show");
+  });
+  function persist(){
+    try{ window.parent.postMessage({type:'__edit_mode_set_keys', edits: window.__TWEAKS__}, '*'); }catch(e){}
+  }
+  window.parent.postMessage({type:'__edit_mode_available'},'*');
+
+  // Apply initial hue/thickness
+  setHue(window.__TWEAKS__.hue, (HUES.find(h=>h[0].toLowerCase()===window.__TWEAKS__.hue.toLowerCase())||HUES[1])[1]);
+  thickEl.value = window.__TWEAKS__.thickness; thickLab.textContent = window.__TWEAKS__.thickness.toFixed(1);
+
+  // ————————————————————————— RESIZE —————————————————————————
+  window.addEventListener("resize", ()=>{
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    genStars();
+  });
+
+  // ————————————————————————— LOOP —————————————————————————
+  let lastFrame = performance.now();
+  const latEl = document.getElementById("lat");
+  const lonEl = document.getElementById("lon");
+  const headingEl = document.getElementById("heading");
+  const pitchEl = document.getElementById("pitch");
+  const zoomEl = document.getElementById("zoom");
+
+  function frame(t){
+    const dt = Math.min(100, t - lastFrame); lastFrame = t;
+    sphereMat.uniforms.uTime.value = t*0.001;
+
+    if(rotating && !userInteracting) rotY += dt * 0.00015 * 0.6;
+    worldGroup.rotation.y = rotY;
+    worldGroup.rotation.x = rotX;
+
+    camera.position.z += (targetZ - camera.position.z) * 0.08;
+
+    // US reveal when zoomed close & camera aimed at Americas
+    const zoomClose = targetZ < 3.2;
+    const camLocalDir = new THREE.Vector3(0,0,1).applyMatrix4(
+      new THREE.Matrix4().makeRotationY(-rotY).multiply(new THREE.Matrix4().makeRotationX(-rotX))
+    ).normalize();
+    const usVec = lngLatToVec3(-96, 39, 1).normalize();
+    const aimed = camLocalDir.dot(usVec) > 0.3;
+    usGroup.visible = zoomClose || aimed;
+
+    // Hit test (throttled ~ every frame, it's fast enough w/ 177 countries)
+    const hit = hitTest();
+    if(hit && hit.feature){
+      const key = hit.kind + ":" + (hit.feature.properties?.name || hit.feature._sea?.code);
+      if(key !== hoveredKey){
+        hoveredKey = key;
+        hoverFeature = hit.feature; hoverKind = hit.kind;
+        highlightFeature(hit.feature, hit.kind);
+        cursorHud.style.display = "block";
+        cursorHud.textContent = (hit.feature.properties?.name || "").toUpperCase();
+        scanLabel.textContent = (hit.feature.properties?.name || "").toUpperCase() + " [" + hit.kind.toUpperCase() + "]";
+      }
+    } else {
+      if(hoveredKey){
+        hoveredKey = null; hoverFeature = null; hoverKind = null;
+        clearHover();
+        cursorHud.style.display = "none";
+      }
+    }
+    if(hit){
+      latEl.textContent = Math.abs(hit.lat).toFixed(2) + "°" + (hit.lat>=0?"N":"S");
+      lonEl.textContent = Math.abs(hit.lng).toFixed(2) + "°" + (hit.lng>=0?"E":"W");
+    }
+
+    // Scan overlay
+    positionScanOverlay(hoverFeature);
+
+    // DC star pulse
+    const pulse = 0.08 + Math.sin(t*0.005)*0.025;
+    starSprite.scale.setScalar(pulse);
+    halo.scale.setScalar(1 + Math.sin(t*0.005)*0.3);
+    haloMat.opacity = 0.3 + Math.sin(t*0.005 + 1)*0.15;
+
+    // HUD
+    const headingDeg = ((-rotY * 180/Math.PI) % 360 + 360) % 360;
+    headingEl.textContent = (headingDeg < 90 || headingDeg > 270 ? "N " : "S ") + String(Math.round(headingDeg)).padStart(3,"0") + "°";
+    pitchEl.textContent = (rotX*180/Math.PI).toFixed(0).padStart(2,"0") + "°";
+    zoomEl.textContent = (4.5/camera.position.z).toFixed(2) + "x";
+
+    drawStars(t);
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  // hide loader
+  document.getElementById("loader").style.opacity = "0";
+  setTimeout(()=>{ document.getElementById("loader").style.display = "none"; }, 400);
+  document.getElementById("loader").style.transition = "opacity .4s";
+})();
+
+
+  // ═══════════════════════════════════════════════════
+  // STOXBALLZ WORLD STATE INTEGRATION
+  // ═══════════════════════════════════════════════════
+
+  // Embedded geo lookup (countries + states from world state)
+  const GEO_LOOKUP = {"countries":{"Afghanistan":{"ticker":"AFG","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-af","country_code":"AF","branch":"Geopolitical","market_status":"Pre-Fix"},"Albania":{"ticker":"ALB","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-al","country_code":"AL","branch":"Geopolitical","market_status":"Pre-Fix"},"Algeria":{"ticker":"DZA","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-dz","country_code":"DZ","branch":"Geopolitical","market_status":"Pre-Fix"},"Andorra":{"ticker":"AND","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ad","country_code":"AD","branch":"Geopolitical","market_status":"Pre-Fix"},"Angola":{"ticker":"AGO","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ao","country_code":"AO","branch":"Geopolitical","market_status":"Pre-Fix"},"Antigua and Barbuda":{"ticker":"ATG","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ag","country_code":"AG","branch":"Geopolitical","market_status":"Pre-Fix"},"Argentina":{"ticker":"ARG","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ar","country_code":"AR","branch":"Geopolitical","market_status":"Pre-Fix"},"Armenia":{"ticker":"ARM","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-am","country_code":"AM","branch":"Geopolitical","market_status":"Pre-Fix"},"Australia":{"ticker":"AUS","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-au","country_code":"AU","branch":"Geopolitical","market_status":"Pre-Fix"},"Austria":{"ticker":"AUT","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-at","country_code":"AT","branch":"Geopolitical","market_status":"Pre-Fix"},"Azerbaijan":{"ticker":"AZE","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-az","country_code":"AZ","branch":"Geopolitical","market_status":"Pre-Fix"},"Bahamas":{"ticker":"BHS","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-bs","country_code":"BS","branch":"Geopolitical","market_status":"Pre-Fix"},"Bahrain":{"ticker":"BHR","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-bh","country_code":"BH","branch":"Geopolitical","market_status":"Pre-Fix"},"Bangladesh":{"ticker":"BGD","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-bd","country_code":"BD","branch":"Geopolitical","market_status":"Pre-Fix"},"Barbados":{"ticker":"BRB","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-bb","country_code":"BB","branch":"Geopolitical","market_status":"Pre-Fix"},"Belarus":{"ticker":"BLR","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-by","country_code":"BY","branch":"Geopolitical","market_status":"Pre-Fix"},"Belgium":{"ticker":"BEL","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-be","country_code":"BE","branch":"Geopolitical","market_status":"Pre-Fix"},"Belize":{"ticker":"BLZ","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-bz","country_code":"BZ","branch":"Geopolitical","market_status":"Pre-Fix"},"Benin":{"ticker":"BEN","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-bj","country_code":"BJ","branch":"Geopolitical","market_status":"Pre-Fix"},"Bhutan":{"ticker":"BTN","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-bt","country_code":"BT","branch":"Geopolitical","market_status":"Pre-Fix"},"Bolivia":{"ticker":"BOL","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-bo","country_code":"BO","branch":"Geopolitical","market_status":"Pre-Fix"},"Bosnia and Herzegovina":{"ticker":"BIH","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ba","country_code":"BA","branch":"Geopolitical","market_status":"Pre-Fix"},"Botswana":{"ticker":"BWA","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-bw","country_code":"BW","branch":"Geopolitical","market_status":"Pre-Fix"},"Brazil":{"ticker":"BRA","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-br","country_code":"BR","branch":"Geopolitical","market_status":"Pre-Fix"},"Brunei":{"ticker":"BRN","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-bn","country_code":"BN","branch":"Geopolitical","market_status":"Pre-Fix"},"Bulgaria":{"ticker":"BGR","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-bg","country_code":"BG","branch":"Geopolitical","market_status":"Pre-Fix"},"Burkina Faso":{"ticker":"BFA","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-bf","country_code":"BF","branch":"Geopolitical","market_status":"Pre-Fix"},"Burundi":{"ticker":"BDI","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-bi","country_code":"BI","branch":"Geopolitical","market_status":"Pre-Fix"},"Cabo Verde":{"ticker":"CPV","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-cv","country_code":"CV","branch":"Geopolitical","market_status":"Pre-Fix"},"Cambodia":{"ticker":"KHM","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-kh","country_code":"KH","branch":"Geopolitical","market_status":"Pre-Fix"},"Cameroon":{"ticker":"CMR","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-cm","country_code":"CM","branch":"Geopolitical","market_status":"Pre-Fix"},"Canada":{"ticker":"CAN","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ca","country_code":"CA","branch":"Geopolitical","market_status":"Pre-Fix"},"Central African Republic":{"ticker":"CAF","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-cf","country_code":"CF","branch":"Geopolitical","market_status":"Pre-Fix"},"Chad":{"ticker":"TCD","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-td","country_code":"TD","branch":"Geopolitical","market_status":"Pre-Fix"},"Chile":{"ticker":"CHL","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-cl","country_code":"CL","branch":"Geopolitical","market_status":"Pre-Fix"},"China":{"ticker":"CHN","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-cn","country_code":"CN","branch":"Geopolitical","market_status":"Pre-Fix"},"Colombia":{"ticker":"COL","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-co","country_code":"CO","branch":"Geopolitical","market_status":"Pre-Fix"},"Comoros":{"ticker":"COM","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-km","country_code":"KM","branch":"Geopolitical","market_status":"Pre-Fix"},"Congo, Democratic Republic of the":{"ticker":"COD","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-cd","country_code":"CD","branch":"Geopolitical","market_status":"Pre-Fix"},"Congo, Republic of the":{"ticker":"COG","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-cg","country_code":"CG","branch":"Geopolitical","market_status":"Pre-Fix"},"Costa Rica":{"ticker":"CRI","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-cr","country_code":"CR","branch":"Geopolitical","market_status":"Pre-Fix"},"C\u00f4te d'Ivoire":{"ticker":"CIV","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ci","country_code":"CI","branch":"Geopolitical","market_status":"Pre-Fix"},"Croatia":{"ticker":"HRV","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-hr","country_code":"HR","branch":"Geopolitical","market_status":"Pre-Fix"},"Cuba":{"ticker":"CUB","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-cu","country_code":"CU","branch":"Geopolitical","market_status":"Pre-Fix"},"Cyprus":{"ticker":"CYP","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-cy","country_code":"CY","branch":"Geopolitical","market_status":"Pre-Fix"},"Czech Republic":{"ticker":"CZE","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-cz","country_code":"CZ","branch":"Geopolitical","market_status":"Pre-Fix"},"Denmark":{"ticker":"DNK","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-dk","country_code":"DK","branch":"Geopolitical","market_status":"Pre-Fix"},"Djibouti":{"ticker":"DJI","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-dj","country_code":"DJ","branch":"Geopolitical","market_status":"Pre-Fix"},"Dominica":{"ticker":"DMA","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-dm","country_code":"DM","branch":"Geopolitical","market_status":"Pre-Fix"},"Dominican Republic":{"ticker":"DOM","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-do","country_code":"DO","branch":"Geopolitical","market_status":"Pre-Fix"},"Ecuador":{"ticker":"ECU","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ec","country_code":"EC","branch":"Geopolitical","market_status":"Pre-Fix"},"Egypt":{"ticker":"EGY","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-eg","country_code":"EG","branch":"Geopolitical","market_status":"Pre-Fix"},"El Salvador":{"ticker":"SLV","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-sv","country_code":"SV","branch":"Geopolitical","market_status":"Pre-Fix"},"Equatorial Guinea":{"ticker":"GNQ","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-gq","country_code":"GQ","branch":"Geopolitical","market_status":"Pre-Fix"},"Eritrea":{"ticker":"ERI","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-er","country_code":"ER","branch":"Geopolitical","market_status":"Pre-Fix"},"Estonia":{"ticker":"EST","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ee","country_code":"EE","branch":"Geopolitical","market_status":"Pre-Fix"},"Eswatini":{"ticker":"SWZ","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-sz","country_code":"SZ","branch":"Geopolitical","market_status":"Pre-Fix"},"Ethiopia":{"ticker":"ETH","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-et","country_code":"ET","branch":"Geopolitical","market_status":"Pre-Fix"},"Fiji":{"ticker":"FJI","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-fj","country_code":"FJ","branch":"Geopolitical","market_status":"Pre-Fix"},"Finland":{"ticker":"FIN","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-fi","country_code":"FI","branch":"Geopolitical","market_status":"Pre-Fix"},"France":{"ticker":"FRA","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-fr","country_code":"FR","branch":"Geopolitical","market_status":"Pre-Fix"},"Gabon":{"ticker":"GAB","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ga","country_code":"GA","branch":"Geopolitical","market_status":"Pre-Fix"},"Gambia":{"ticker":"GMB","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-gm","country_code":"GM","branch":"Geopolitical","market_status":"Pre-Fix"},"Georgia":{"ticker":"GEO","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ge","country_code":"GE","branch":"Geopolitical","market_status":"Pre-Fix"},"Germany":{"ticker":"DEU","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-de","country_code":"DE","branch":"Geopolitical","market_status":"Pre-Fix"},"Ghana":{"ticker":"GHA","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-gh","country_code":"GH","branch":"Geopolitical","market_status":"Pre-Fix"},"Greece":{"ticker":"GRC","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-gr","country_code":"GR","branch":"Geopolitical","market_status":"Pre-Fix"},"Grenada":{"ticker":"GRD","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-gd","country_code":"GD","branch":"Geopolitical","market_status":"Pre-Fix"},"Guatemala":{"ticker":"GTM","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-gt","country_code":"GT","branch":"Geopolitical","market_status":"Pre-Fix"},"Guinea":{"ticker":"GIN","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-gn","country_code":"GN","branch":"Geopolitical","market_status":"Pre-Fix"},"Guinea-Bissau":{"ticker":"GNB","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-gw","country_code":"GW","branch":"Geopolitical","market_status":"Pre-Fix"},"Guyana":{"ticker":"GUY","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-gy","country_code":"GY","branch":"Geopolitical","market_status":"Pre-Fix"},"Haiti":{"ticker":"HTI","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ht","country_code":"HT","branch":"Geopolitical","market_status":"Pre-Fix"},"Honduras":{"ticker":"HND","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-hn","country_code":"HN","branch":"Geopolitical","market_status":"Pre-Fix"},"Hungary":{"ticker":"HUN","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-hu","country_code":"HU","branch":"Geopolitical","market_status":"Pre-Fix"},"Iceland":{"ticker":"ISL","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-is","country_code":"IS","branch":"Geopolitical","market_status":"Pre-Fix"},"India":{"ticker":"IND","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-in","country_code":"IN","branch":"Geopolitical","market_status":"Pre-Fix"},"Indonesia":{"ticker":"IDN","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-id","country_code":"ID","branch":"Geopolitical","market_status":"Pre-Fix"},"Iran":{"ticker":"IRN","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ir","country_code":"IR","branch":"Geopolitical","market_status":"Pre-Fix"},"Iraq":{"ticker":"IRQ","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-iq","country_code":"IQ","branch":"Geopolitical","market_status":"Pre-Fix"},"Ireland":{"ticker":"IRL","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ie","country_code":"IE","branch":"Geopolitical","market_status":"Pre-Fix"},"Israel":{"ticker":"ISR","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-il","country_code":"IL","branch":"Geopolitical","market_status":"Pre-Fix"},"Italy":{"ticker":"ITA","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-it","country_code":"IT","branch":"Geopolitical","market_status":"Pre-Fix"},"Jamaica":{"ticker":"JAM","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-jm","country_code":"JM","branch":"Geopolitical","market_status":"Pre-Fix"},"Japan":{"ticker":"JPN","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-jp","country_code":"JP","branch":"Geopolitical","market_status":"Pre-Fix"},"Jordan":{"ticker":"JOR","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-jo","country_code":"JO","branch":"Geopolitical","market_status":"Pre-Fix"},"Kazakhstan":{"ticker":"KAZ","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-kz","country_code":"KZ","branch":"Geopolitical","market_status":"Pre-Fix"},"Kenya":{"ticker":"KEN","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ke","country_code":"KE","branch":"Geopolitical","market_status":"Pre-Fix"},"Kiribati":{"ticker":"KIR","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ki","country_code":"KI","branch":"Geopolitical","market_status":"Pre-Fix"},"Kuwait":{"ticker":"KWT","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-kw","country_code":"KW","branch":"Geopolitical","market_status":"Pre-Fix"},"Kyrgyzstan":{"ticker":"KGZ","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-kg","country_code":"KG","branch":"Geopolitical","market_status":"Pre-Fix"},"Laos":{"ticker":"LAO","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-la","country_code":"LA","branch":"Geopolitical","market_status":"Pre-Fix"},"Latvia":{"ticker":"LVA","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-lv","country_code":"LV","branch":"Geopolitical","market_status":"Pre-Fix"},"Lebanon":{"ticker":"LBN","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-lb","country_code":"LB","branch":"Geopolitical","market_status":"Pre-Fix"},"Lesotho":{"ticker":"LSO","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ls","country_code":"LS","branch":"Geopolitical","market_status":"Pre-Fix"},"Liberia":{"ticker":"LBR","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-lr","country_code":"LR","branch":"Geopolitical","market_status":"Pre-Fix"},"Libya":{"ticker":"LBY","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ly","country_code":"LY","branch":"Geopolitical","market_status":"Pre-Fix"},"Liechtenstein":{"ticker":"LIE","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-li","country_code":"LI","branch":"Geopolitical","market_status":"Pre-Fix"},"Lithuania":{"ticker":"LTU","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-lt","country_code":"LT","branch":"Geopolitical","market_status":"Pre-Fix"},"Luxembourg":{"ticker":"LUX","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-lu","country_code":"LU","branch":"Geopolitical","market_status":"Pre-Fix"},"Madagascar":{"ticker":"MDG","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-mg","country_code":"MG","branch":"Geopolitical","market_status":"Pre-Fix"},"Malawi":{"ticker":"MWI","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-mw","country_code":"MW","branch":"Geopolitical","market_status":"Pre-Fix"},"Malaysia":{"ticker":"MYS","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-my","country_code":"MY","branch":"Geopolitical","market_status":"Pre-Fix"},"Maldives":{"ticker":"MDV","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-mv","country_code":"MV","branch":"Geopolitical","market_status":"Pre-Fix"},"Mali":{"ticker":"MLI","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ml","country_code":"ML","branch":"Geopolitical","market_status":"Pre-Fix"},"Malta":{"ticker":"MLT","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-mt","country_code":"MT","branch":"Geopolitical","market_status":"Pre-Fix"},"Marshall Islands":{"ticker":"MHL","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-mh","country_code":"MH","branch":"Geopolitical","market_status":"Pre-Fix"},"Mauritania":{"ticker":"MRT","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-mr","country_code":"MR","branch":"Geopolitical","market_status":"Pre-Fix"},"Mauritius":{"ticker":"MUS","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-mu","country_code":"MU","branch":"Geopolitical","market_status":"Pre-Fix"},"Mexico":{"ticker":"MEX","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-mx","country_code":"MX","branch":"Geopolitical","market_status":"Pre-Fix"},"Micronesia, Federated States of":{"ticker":"FSM","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-fm","country_code":"FM","branch":"Geopolitical","market_status":"Pre-Fix"},"Moldova":{"ticker":"MDA","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-md","country_code":"MD","branch":"Geopolitical","market_status":"Pre-Fix"},"Monaco":{"ticker":"MCO","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-mc","country_code":"MC","branch":"Geopolitical","market_status":"Pre-Fix"},"Mongolia":{"ticker":"MNG","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-mn","country_code":"MN","branch":"Geopolitical","market_status":"Pre-Fix"},"Montenegro":{"ticker":"MNE","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-me","country_code":"ME","branch":"Geopolitical","market_status":"Pre-Fix"},"Morocco":{"ticker":"MAR","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ma","country_code":"MA","branch":"Geopolitical","market_status":"Pre-Fix"},"Mozambique":{"ticker":"MOZ","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-mz","country_code":"MZ","branch":"Geopolitical","market_status":"Pre-Fix"},"Myanmar":{"ticker":"MMR","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-mm","country_code":"MM","branch":"Geopolitical","market_status":"Pre-Fix"},"Namibia":{"ticker":"NAM","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-na","country_code":"NA","branch":"Geopolitical","market_status":"Pre-Fix"},"Nauru":{"ticker":"NRU","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-nr","country_code":"NR","branch":"Geopolitical","market_status":"Pre-Fix"},"Nepal":{"ticker":"NPL","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-np","country_code":"NP","branch":"Geopolitical","market_status":"Pre-Fix"},"Netherlands":{"ticker":"NLD","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-nl","country_code":"NL","branch":"Geopolitical","market_status":"Pre-Fix"},"New Zealand":{"ticker":"NZL","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-nz","country_code":"NZ","branch":"Geopolitical","market_status":"Pre-Fix"},"Nicaragua":{"ticker":"NIC","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ni","country_code":"NI","branch":"Geopolitical","market_status":"Pre-Fix"},"Niger":{"ticker":"NER","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ne","country_code":"NE","branch":"Geopolitical","market_status":"Pre-Fix"},"Nigeria":{"ticker":"NGA","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ng","country_code":"NG","branch":"Geopolitical","market_status":"Pre-Fix"},"North Korea":{"ticker":"PRK","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-kp","country_code":"KP","branch":"Geopolitical","market_status":"Pre-Fix"},"North Macedonia":{"ticker":"MKD","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-mk","country_code":"MK","branch":"Geopolitical","market_status":"Pre-Fix"},"Norway":{"ticker":"NOR","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-no","country_code":"NO","branch":"Geopolitical","market_status":"Pre-Fix"},"Oman":{"ticker":"OMN","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-om","country_code":"OM","branch":"Geopolitical","market_status":"Pre-Fix"},"Pakistan":{"ticker":"PAK","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-pk","country_code":"PK","branch":"Geopolitical","market_status":"Pre-Fix"},"Palau":{"ticker":"PLW","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-pw","country_code":"PW","branch":"Geopolitical","market_status":"Pre-Fix"},"Panama":{"ticker":"PAN","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-pa","country_code":"PA","branch":"Geopolitical","market_status":"Pre-Fix"},"Papua New Guinea":{"ticker":"PNG","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-pg","country_code":"PG","branch":"Geopolitical","market_status":"Pre-Fix"},"Paraguay":{"ticker":"PRY","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-py","country_code":"PY","branch":"Geopolitical","market_status":"Pre-Fix"},"Peru":{"ticker":"PER","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-pe","country_code":"PE","branch":"Geopolitical","market_status":"Pre-Fix"},"Philippines":{"ticker":"PHL","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ph","country_code":"PH","branch":"Geopolitical","market_status":"Pre-Fix"},"Poland":{"ticker":"POL","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-pl","country_code":"PL","branch":"Geopolitical","market_status":"Pre-Fix"},"Portugal":{"ticker":"PRT","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-pt","country_code":"PT","branch":"Geopolitical","market_status":"Pre-Fix"},"Qatar":{"ticker":"QAT","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-qa","country_code":"QA","branch":"Geopolitical","market_status":"Pre-Fix"},"Romania":{"ticker":"ROU","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ro","country_code":"RO","branch":"Geopolitical","market_status":"Pre-Fix"},"Russia":{"ticker":"RUS","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ru","country_code":"RU","branch":"Geopolitical","market_status":"Pre-Fix"},"Rwanda":{"ticker":"RWA","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-rw","country_code":"RW","branch":"Geopolitical","market_status":"Pre-Fix"},"Saint Kitts and Nevis":{"ticker":"KNA","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-kn","country_code":"KN","branch":"Geopolitical","market_status":"Pre-Fix"},"Saint Lucia":{"ticker":"LCA","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-lc","country_code":"LC","branch":"Geopolitical","market_status":"Pre-Fix"},"Saint Vincent and the Grenadines":{"ticker":"VCT","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-vc","country_code":"VC","branch":"Geopolitical","market_status":"Pre-Fix"},"Samoa":{"ticker":"WSM","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ws","country_code":"WS","branch":"Geopolitical","market_status":"Pre-Fix"},"San Marino":{"ticker":"SMR","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-sm","country_code":"SM","branch":"Geopolitical","market_status":"Pre-Fix"},"Sao Tome and Principe":{"ticker":"STP","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-st","country_code":"ST","branch":"Geopolitical","market_status":"Pre-Fix"},"Saudi Arabia":{"ticker":"SAU","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-sa","country_code":"SA","branch":"Geopolitical","market_status":"Pre-Fix"},"Senegal":{"ticker":"SEN","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-sn","country_code":"SN","branch":"Geopolitical","market_status":"Pre-Fix"},"Serbia":{"ticker":"SRB","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-rs","country_code":"RS","branch":"Geopolitical","market_status":"Pre-Fix"},"Seychelles":{"ticker":"SYC","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-sc","country_code":"SC","branch":"Geopolitical","market_status":"Pre-Fix"},"Sierra Leone":{"ticker":"SLE","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-sl","country_code":"SL","branch":"Geopolitical","market_status":"Pre-Fix"},"Singapore":{"ticker":"SGP","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-sg","country_code":"SG","branch":"Geopolitical","market_status":"Pre-Fix"},"Slovakia":{"ticker":"SVK","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-sk","country_code":"SK","branch":"Geopolitical","market_status":"Pre-Fix"},"Slovenia":{"ticker":"SVN","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-si","country_code":"SI","branch":"Geopolitical","market_status":"Pre-Fix"},"Solomon Islands":{"ticker":"SLB","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-sb","country_code":"SB","branch":"Geopolitical","market_status":"Pre-Fix"},"Somalia":{"ticker":"SOM","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-so","country_code":"SO","branch":"Geopolitical","market_status":"Pre-Fix"},"South Africa":{"ticker":"ZAF","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-za","country_code":"ZA","branch":"Geopolitical","market_status":"Pre-Fix"},"South Korea":{"ticker":"KOR","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-kr","country_code":"KR","branch":"Geopolitical","market_status":"Pre-Fix"},"South Sudan":{"ticker":"SSD","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ss","country_code":"SS","branch":"Geopolitical","market_status":"Pre-Fix"},"Spain":{"ticker":"ESP","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-es","country_code":"ES","branch":"Geopolitical","market_status":"Pre-Fix"},"Sri Lanka":{"ticker":"LKA","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-lk","country_code":"LK","branch":"Geopolitical","market_status":"Pre-Fix"},"Sudan":{"ticker":"SDN","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-sd","country_code":"SD","branch":"Geopolitical","market_status":"Pre-Fix"},"Suriname":{"ticker":"SUR","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-sr","country_code":"SR","branch":"Geopolitical","market_status":"Pre-Fix"},"Sweden":{"ticker":"SWE","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-se","country_code":"SE","branch":"Geopolitical","market_status":"Pre-Fix"},"Switzerland":{"ticker":"CHE","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ch","country_code":"CH","branch":"Geopolitical","market_status":"Pre-Fix"},"Syria":{"ticker":"SYR","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-sy","country_code":"SY","branch":"Geopolitical","market_status":"Pre-Fix"},"Tajikistan":{"ticker":"TJK","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-tj","country_code":"TJ","branch":"Geopolitical","market_status":"Pre-Fix"},"Tanzania":{"ticker":"TZA","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-tz","country_code":"TZ","branch":"Geopolitical","market_status":"Pre-Fix"},"Thailand":{"ticker":"THA","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-th","country_code":"TH","branch":"Geopolitical","market_status":"Pre-Fix"},"Timor-Leste":{"ticker":"TLS","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-tl","country_code":"TL","branch":"Geopolitical","market_status":"Pre-Fix"},"Togo":{"ticker":"TGO","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-tg","country_code":"TG","branch":"Geopolitical","market_status":"Pre-Fix"},"Tonga":{"ticker":"TON","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-to","country_code":"TO","branch":"Geopolitical","market_status":"Pre-Fix"},"Trinidad and Tobago":{"ticker":"TTO","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-tt","country_code":"TT","branch":"Geopolitical","market_status":"Pre-Fix"},"Tunisia":{"ticker":"TUN","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-tn","country_code":"TN","branch":"Geopolitical","market_status":"Pre-Fix"},"Turkey":{"ticker":"TUR","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-tr","country_code":"TR","branch":"Geopolitical","market_status":"Pre-Fix"},"Turkmenistan":{"ticker":"TKM","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-tm","country_code":"TM","branch":"Geopolitical","market_status":"Pre-Fix"},"Tuvalu":{"ticker":"TUV","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-tv","country_code":"TV","branch":"Geopolitical","market_status":"Pre-Fix"},"Uganda":{"ticker":"UGA","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ug","country_code":"UG","branch":"Geopolitical","market_status":"Pre-Fix"},"Ukraine":{"ticker":"UKR","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ua","country_code":"UA","branch":"Geopolitical","market_status":"Pre-Fix"},"United Arab Emirates":{"ticker":"ARE","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ae","country_code":"AE","branch":"Geopolitical","market_status":"Pre-Fix"},"United Kingdom":{"ticker":"GBR","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-gb","country_code":"GB","branch":"Geopolitical","market_status":"Pre-Fix"},"United States":{"ticker":"USA","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-us","country_code":"US","branch":"Geopolitical","market_status":"Pre-Fix"},"Uruguay":{"ticker":"URY","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-uy","country_code":"UY","branch":"Geopolitical","market_status":"Pre-Fix"},"Uzbekistan":{"ticker":"UZB","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-uz","country_code":"UZ","branch":"Geopolitical","market_status":"Pre-Fix"},"Vanuatu":{"ticker":"VUT","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-vu","country_code":"VU","branch":"Geopolitical","market_status":"Pre-Fix"},"Vatican City / Holy See":{"ticker":"VAT","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-va","country_code":"VA","branch":"Geopolitical","market_status":"Pre-Fix"},"Venezuela":{"ticker":"VEN","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ve","country_code":"VE","branch":"Geopolitical","market_status":"Pre-Fix"},"Vietnam":{"ticker":"VNM","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-vn","country_code":"VN","branch":"Geopolitical","market_status":"Pre-Fix"},"Yemen":{"ticker":"YEM","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ye","country_code":"YE","branch":"Geopolitical","market_status":"Pre-Fix"},"Zambia":{"ticker":"ZMB","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-zm","country_code":"ZM","branch":"Geopolitical","market_status":"Pre-Fix"},"Zimbabwe":{"ticker":"ZWE","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-zw","country_code":"ZW","branch":"Geopolitical","market_status":"Pre-Fix"},"State of Palestine":{"ticker":"PSE","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Reactive","rank":"Major","momentum":"Neutral","resilience":"Steady","source_id":"geo-country-ps","country_code":"PS","branch":"Geopolitical","market_status":"Pre-Fix"}},"states":{"Delaware":{"ticker":"DE01","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-de","state_code":"DE","branch":"Government","market_status":"Pre-Fix"},"Pennsylvania":{"ticker":"PA02","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-pa","state_code":"PA","branch":"Government","market_status":"Pre-Fix"},"New Jersey":{"ticker":"NJ03","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-nj","state_code":"NJ","branch":"Government","market_status":"Pre-Fix"},"Georgia":{"ticker":"GA04","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-ga","state_code":"GA","branch":"Government","market_status":"Pre-Fix"},"Connecticut":{"ticker":"CT05","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-ct","state_code":"CT","branch":"Government","market_status":"Pre-Fix"},"Massachusetts":{"ticker":"MA06","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-ma","state_code":"MA","branch":"Government","market_status":"Pre-Fix"},"Maryland":{"ticker":"MD07","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-md","state_code":"MD","branch":"Government","market_status":"Pre-Fix"},"South Carolina":{"ticker":"SC08","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-sc","state_code":"SC","branch":"Government","market_status":"Pre-Fix"},"New Hampshire":{"ticker":"NH09","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-nh","state_code":"NH","branch":"Government","market_status":"Pre-Fix"},"Virginia":{"ticker":"VA10","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-va","state_code":"VA","branch":"Government","market_status":"Pre-Fix"},"New York":{"ticker":"NY11","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-ny","state_code":"NY","branch":"Government","market_status":"Pre-Fix"},"North Carolina":{"ticker":"NC12","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-nc","state_code":"NC","branch":"Government","market_status":"Pre-Fix"},"Rhode Island":{"ticker":"RI13","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-ri","state_code":"RI","branch":"Government","market_status":"Pre-Fix"},"Vermont":{"ticker":"VT14","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-vt","state_code":"VT","branch":"Government","market_status":"Pre-Fix"},"Kentucky":{"ticker":"KY15","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-ky","state_code":"KY","branch":"Government","market_status":"Pre-Fix"},"Tennessee":{"ticker":"TN16","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-tn","state_code":"TN","branch":"Government","market_status":"Pre-Fix"},"Ohio":{"ticker":"OH17","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-oh","state_code":"OH","branch":"Government","market_status":"Pre-Fix"},"Louisiana":{"ticker":"LA18","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-la","state_code":"LA","branch":"Government","market_status":"Pre-Fix"},"Indiana":{"ticker":"IN19","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-in","state_code":"IN","branch":"Government","market_status":"Pre-Fix"},"Mississippi":{"ticker":"MS20","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-ms","state_code":"MS","branch":"Government","market_status":"Pre-Fix"},"Illinois":{"ticker":"IL21","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-il","state_code":"IL","branch":"Government","market_status":"Pre-Fix"},"Alabama":{"ticker":"AL22","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-al","state_code":"AL","branch":"Government","market_status":"Pre-Fix"},"Maine":{"ticker":"ME23","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-me","state_code":"ME","branch":"Government","market_status":"Pre-Fix"},"Missouri":{"ticker":"MO24","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-mo","state_code":"MO","branch":"Government","market_status":"Pre-Fix"},"Arkansas":{"ticker":"AR25","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-ar","state_code":"AR","branch":"Government","market_status":"Pre-Fix"},"Michigan":{"ticker":"MI26","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-mi","state_code":"MI","branch":"Government","market_status":"Pre-Fix"},"Florida":{"ticker":"FL27","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-fl","state_code":"FL","branch":"Government","market_status":"Pre-Fix"},"Texas":{"ticker":"TX28","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-tx","state_code":"TX","branch":"Government","market_status":"Pre-Fix"},"Iowa":{"ticker":"IA29","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-ia","state_code":"IA","branch":"Government","market_status":"Pre-Fix"},"Wisconsin":{"ticker":"WI30","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-wi","state_code":"WI","branch":"Government","market_status":"Pre-Fix"},"California":{"ticker":"CA31","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-ca","state_code":"CA","branch":"Government","market_status":"Pre-Fix"},"Minnesota":{"ticker":"MN32","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-mn","state_code":"MN","branch":"Government","market_status":"Pre-Fix"},"Oregon":{"ticker":"OR33","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-or","state_code":"OR","branch":"Government","market_status":"Pre-Fix"},"Kansas":{"ticker":"KS34","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-ks","state_code":"KS","branch":"Government","market_status":"Pre-Fix"},"West Virginia":{"ticker":"WV35","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-wv","state_code":"WV","branch":"Government","market_status":"Pre-Fix"},"Nevada":{"ticker":"NV36","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-nv","state_code":"NV","branch":"Government","market_status":"Pre-Fix"},"Nebraska":{"ticker":"NE37","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-ne","state_code":"NE","branch":"Government","market_status":"Pre-Fix"},"Colorado":{"ticker":"CO38","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-co","state_code":"CO","branch":"Government","market_status":"Pre-Fix"},"North Dakota":{"ticker":"ND39","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-nd","state_code":"ND","branch":"Government","market_status":"Pre-Fix"},"South Dakota":{"ticker":"SD40","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-sd","state_code":"SD","branch":"Government","market_status":"Pre-Fix"},"Montana":{"ticker":"MT41","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-mt","state_code":"MT","branch":"Government","market_status":"Pre-Fix"},"Washington":{"ticker":"WA42","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-wa","state_code":"WA","branch":"Government","market_status":"Pre-Fix"},"Idaho":{"ticker":"ID43","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-id","state_code":"ID","branch":"Government","market_status":"Pre-Fix"},"Wyoming":{"ticker":"WY44","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-wy","state_code":"WY","branch":"Government","market_status":"Pre-Fix"},"Utah":{"ticker":"UT45","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-ut","state_code":"UT","branch":"Government","market_status":"Pre-Fix"},"Oklahoma":{"ticker":"OK46","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-ok","state_code":"OK","branch":"Government","market_status":"Pre-Fix"},"New Mexico":{"ticker":"NM47","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-nm","state_code":"NM","branch":"Government","market_status":"Pre-Fix"},"Arizona":{"ticker":"AZ48","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-az","state_code":"AZ","branch":"Government","market_status":"Pre-Fix"},"Alaska":{"ticker":"AK49","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-ak","state_code":"AK","branch":"Government","market_status":"Pre-Fix"},"Hawaii":{"ticker":"HI50","price":"100","prev_price":"100","pct":"0.00%","trend":"Flat","volatility":"Stable","rank":"Derived","momentum":"Neutral","resilience":"Durable","source_id":"geo-state-hi","state_code":"HI","branch":"Government","market_status":"Pre-Fix"}},"aliases":{"United States of America":"United States","Bosnia and Herz.":"Bosnia and Herzegovina","Central African Rep.":"Central African Republic","Eq. Guinea":"Equatorial Guinea","S. Sudan":"South Sudan","N. Macedonia":"North Macedonia","Czechia":"Czech Republic","S\u00e3o Tom\u00e9 and Pr\u00edncipe":"Sao Tome and Principe","Vatican":"Vatican City / Holy See","Palestine":"State of Palestine","Dem. Rep. Congo":"Congo, Democratic Republic of the","Congo":"Congo, Republic of the","Brunei Darussalam":"Brunei","Timor-Leste":"Timor-Leste","Cabo Verde":"Cabo Verde","Kyrgyz Republic":"Kyrgyzstan","Lao PDR":"Laos","Iran (Islamic Republic of)":"Iran","Syrian Arab Republic":"Syria","Viet Nam":"Vietnam","Myanmar":"Myanmar","Korea (Republic of)":"South Korea","Korea (Democratic People's Republic of)":"North Korea","Tanzania, United Republic of":"Tanzania","Bolivia (Plurinational State of)":"Bolivia","Venezuela (Bolivarian Republic of)":"Venezuela","Micronesia (Federated States of)":"Micronesia, Federated States of","Moldova (Republic of)":"Moldova","Macedonia":"North Macedonia","The Bahamas":"Bahamas","Gambia":"Gambia","Ivory Coast":"C\u00f4te d'Ivoire","Trinidad and Tobago":"Trinidad and Tobago","St. Lucia":"Saint Lucia","St. Vincent and the Grenadines":"Saint Vincent and the Grenadines","St. Kitts and Nevis":"Saint Kitts and Nevis","Sao Tome and Principe":"Sao Tome and Principe"}};
+
+  // Active world state (loaded from JSON or starts blank)
+  window._DIGIBANX = {
+    cash_balance: 10000,
+    portfolio: {},
+    transaction_log: [],
+    fix_number: 0,
+    market_phase: "Pre-Fix",
+    host_city: "N/A",
+    stox: [],  // full stox array once loaded
+  };
+
+  function getStoxForRegion(name, kind){
+    const aliases = GEO_LOOKUP.aliases || {};
+    // Resolve name via alias
+    const resolvedName = aliases[name] || name;
+    if(kind === "state"){
+      return GEO_LOOKUP.states?.[resolvedName] || GEO_LOOKUP.states?.[name] || null;
+    }
+    return GEO_LOOKUP.countries?.[resolvedName] || GEO_LOOKUP.countries?.[name] || null;
+  }
+
+  // ── DiGiBanx display update ──
+  function updateDigiBanxDisplay(){
+    const db = window._DIGIBANX;
+    const fmt = n => "$" + parseFloat(n||0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+    
+    // Compute portfolio value
+    let invested=0, mktVal=0;
+    const portEntries = Object.entries(db.portfolio||{});
+    portEntries.forEach(([sid,pos])=>{
+      if(!pos.shares) return;
+      const stox = (db.stox||[]).find(s=>s["Source ID"]===sid);
+      const cp = stox ? parseFloat(stox.Price||100) : pos.avg_cost;
+      invested += pos.shares * pos.avg_cost;
+      mktVal += pos.shares * cp;
+    });
+    const totalVal = db.cash_balance + mktVal;
+    const pnl = totalVal - 10000;
+    
+    const el = id => document.getElementById(id);
+    if(el("balance")) el("balance").textContent = fmt(totalVal);
+    if(el("db-cash")) el("db-cash").textContent = fmt(db.cash_balance);
+    if(el("db-invested")) el("db-invested").textContent = fmt(invested);
+    if(el("db-mktval")) el("db-mktval").textContent = fmt(mktVal);
+    if(el("db-pnl")) el("db-pnl").textContent = (pnl>=0?"+":"") + fmt(pnl);
+    if(el("db-fix")) el("db-fix").textContent = (db.fix_number||0) + " · " + (db.market_phase||"Pre-Fix");
+    if(el("db-positions")) el("db-positions").textContent = portEntries.filter(([,p])=>p.shares>0).length + " OPEN";
+    
+    // Holdings list
+    const holdEl = el("db-holdings");
+    if(holdEl){
+      if(portEntries.length === 0){
+        holdEl.innerHTML = "<div style='font-size:9px;color:var(--ink-dim)'>NO POSITIONS</div>";
+      } else {
+        holdEl.innerHTML = portEntries.filter(([,p])=>p.shares>0).map(([sid,pos])=>{
+          const stox = (db.stox||[]).find(s=>s["Source ID"]===sid);
+          const name = stox?.Name || sid;
+          const cp = stox ? parseFloat(stox.Price||100) : pos.avg_cost;
+          const mv = pos.shares * cp;
+          const upnl = mv - pos.shares*pos.avg_cost;
+          return `<div class="row" style="font-size:9px"><span class="k" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${name}</span><span class="v ${upnl>=0?"up":"dn"}" style="font-size:9px">${upnl>=0?"+":""}${upnl.toFixed(2)}</span></div>`;
+        }).join("");
+      }
+    }
+  }
+
+  // ── Trade from map region card ──
+  function tradeFromMap(action){
+    const current = window._currentMapStox;
+    if(!current?.sourceId){ setTradeMsg("No StoxBallz data for this region."); return; }
+    const db = window._DIGIBANX;
+    const stox = (db.stox||[]).find(s=>s["Source ID"]===current.sourceId);
+    const price = stox ? parseFloat(stox.Price||100) : 100;
+    const shares = 1;
+    const total = price * shares;
+
+    if(action === "buy"){
+      if(total > db.cash_balance){ setTradeMsg("Insufficient DiGiBanx funds."); return; }
+      db.cash_balance -= total;
+      const pos = db.portfolio[current.sourceId] || {shares:0, avg_cost:0};
+      const newShares = pos.shares + shares;
+      pos.avg_cost = ((pos.avg_cost * pos.shares) + total) / newShares;
+      pos.shares = newShares;
+      db.portfolio[current.sourceId] = pos;
+      db.transaction_log.unshift({ts:new Date().toISOString(),action:"buy",sourceId:current.sourceId,name:current.name,shares,price:price.toFixed(2),total:total.toFixed(2)});
+      setTradeMsg("✓ BOUGHT " + shares + "× " + (stox?.Ticker||current.sourceId) + " @ $" + price.toFixed(2));
+    } else if(action === "sell"){
+      const pos = db.portfolio[current.sourceId];
+      if(!pos?.shares){ setTradeMsg("No shares to sell."); return; }
+      const sellShares = Math.min(1, pos.shares);
+      const sellTotal = price * sellShares;
+      pos.shares -= sellShares;
+      db.cash_balance += sellTotal;
+      if(pos.shares === 0) delete db.portfolio[current.sourceId];
+      db.transaction_log.unshift({ts:new Date().toISOString(),action:"sell",sourceId:current.sourceId,name:current.name,shares:sellShares,price:price.toFixed(2),total:sellTotal.toFixed(2)});
+      setTradeMsg("✓ SOLD " + sellShares + "× " + (stox?.Ticker||current.sourceId) + " @ $" + price.toFixed(2));
+    } else if(action === "watch"){
+      setTradeMsg("→ Added to watchlist");
+    }
+    saveDigiBanxCache();
+    updateDigiBanxDisplay();
+  }
+
+  function setTradeMsg(msg){
+    const el = document.getElementById("rc-trade-msg");
+    if(el) el.textContent = msg;
+  }
+
+  // ── Load world state modal ──
+  function openLoadModal(){
+    const modal = document.getElementById("ws-modal");
+    if(modal) modal.style.display = "flex";
+  }
+  function closeLoadModal(){
+    const modal = document.getElementById("ws-modal");
+    if(modal) modal.style.display = "none";
+  }
+
+  function importWorldState(e){
+    const file = e.target.files?.[0]; if(!file) return;
+    file.text().then(text=>{
+      try{
+        const ws = JSON.parse(text);
+        if(!ws.stox || !ws.meta || !ws.digibanx) throw new Error("Not a valid StoxBallz world state");
+        
+        // Sync geo lookup with new prices from world state
+        ws.stox.forEach(s=>{
+          const chg = parseFloat((s["Percent Change"]||"0%").replace("%",""))||0;
+          const entry = {
+            ticker: s.Ticker,
+            price: s.Price,
+            prev_price: s["Prev Price"],
+            pct: s["Percent Change"],
+            trend: s.Trend,
+            volatility: s.Volatility,
+            rank: s.Rank,
+            momentum: s["Momentum Bias"],
+            resilience: s.Resilience,
+            source_id: s["Source ID"],
+            branch: s.Branch,
+            market_status: s["Market Status"],
+          };
+          if(s.Subclass === "Sovereign Country") GEO_LOOKUP.countries[s.Name] = entry;
+          if(s.Subclass === "U.S. State") GEO_LOOKUP.states[s.Name] = entry;
+        });
+
+        // Sync DiGiBanx
+        window._DIGIBANX = {
+          ...ws.digibanx,
+          fix_number: ws.meta.fix_number || 0,
+          market_phase: ws.meta.market_phase || "Pre-Fix",
+          host_city: ws.meta.host_city || "N/A",
+          stox: ws.stox,
+        };
+
+        // Update ticker tape
+        updateTapeFromWorldState(ws.stox);
+        updateDigiBanxDisplay();
+        updateMarketFeed(ws);
+        saveDigiBanxCache();
+        closeLoadModal();
+        alert("✓ World state loaded — Fix #" + (ws.meta.fix_number||0) + " · " + ws.stox.length + " stox");
+        e.target.value = "";
+      } catch(err){ alert("Import failed: " + err.message); }
+    });
+  }
+
+  function exportWorldState(){
+    const db = window._DIGIBANX;
+    if(!db.stox?.length){ alert("No world state loaded. Load a JSON first."); return; }
+    const out = {
+      meta: { fix_number: db.fix_number, market_phase: db.market_phase, host_city: db.host_city, bank:"DiGiBanx", exported: new Date().toISOString() },
+      digibanx: { cash_balance: db.cash_balance, portfolio: db.portfolio, transaction_log: db.transaction_log },
+      stox: db.stox,
+    };
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(out,null,2)],{type:"application/json"}));
+    a.download = "StoxBallz_WorldState_Map_Export.json";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+
+  function updateTapeFromWorldState(stoxArr){
+    // Replace ticker tape items with real data
+    const geo = stoxArr.filter(d=>["Sovereign Country","U.S. State"].includes(d.Subclass));
+    const sample = geo.slice(0, 40);
+    const make = () => sample.map(d=>{
+      const chg = parseFloat((d["Percent Change"]||"0%").replace("%",""))||0;
+      const cls = chg>0.1?"up":chg<-0.1?"dn":"";
+      const arrow = chg>0.1?"▲":chg<-0.1?"▼":"▬";
+      const color = chg>0.1?"var(--g)":chg<-0.1?"var(--red)":"var(--ink-dim)";
+      return `<span class="ti" style="color:${color}">${d.Ticker} <span>${arrow}${Math.abs(chg).toFixed(2)}%</span></span>`;
+    }).join("");
+    const tape = document.querySelector(".tk-inner");
+    if(tape) tape.innerHTML = make() + make();
+  }
+
+  function updateMarketFeed(ws){
+    const list = document.getElementById("evList");
+    if(!list) return;
+    const items = [];
+    // Top movers
+    if(ws.meta.fix_number > 0){
+      const sorted = [...ws.stox].sort((a,b)=>parseFloat(b["Percent Change"]||0)-parseFloat(a["Percent Change"]||0));
+      sorted.slice(0,3).forEach(d=>{
+        const chg = parseFloat(d["Percent Change"]||0);
+        items.push(`<div class="ev"><span class="ev-t" style="color:var(--g)">${d.Ticker}</span><span class="ev-d" style="color:var(--g)">${chg>=0?"+":""}${chg.toFixed(2)}% — FIX #${ws.meta.fix_number}</span></div>`);
+      });
+      sorted.slice(-3).forEach(d=>{
+        const chg = parseFloat(d["Percent Change"]||0);
+        items.push(`<div class="ev"><span class="ev-t" style="color:var(--red)">${d.Ticker}</span><span class="ev-d" style="color:var(--red)">${chg>=0?"+":""}${chg.toFixed(2)}% — BOTTOM</span></div>`);
+      });
+    }
+    items.push(`<div class="ev"><span class="ev-t">HOST</span><span class="ev-d">${ws.meta.host_city||"N/A"} · ${ws.meta.market_phase||"Pre-Fix"}</span></div>`);
+    list.innerHTML = items.join("") + list.innerHTML;
+  }
+
+  // ── localStorage cache ──
+  function saveDigiBanxCache(){
+    try{ localStorage.setItem("sxbz_map_v1", JSON.stringify({
+      cash_balance: window._DIGIBANX.cash_balance,
+      portfolio: window._DIGIBANX.portfolio,
+      transaction_log: window._DIGIBANX.transaction_log.slice(0,50),
+    })); } catch(e){}
+  }
+  function loadDigiBanxCache(){
+    try{
+      const saved = localStorage.getItem("sxbz_map_v1");
+      if(saved){ const p = JSON.parse(saved); Object.assign(window._DIGIBANX, p); }
+    } catch(e){}
+  }
+  loadDigiBanxCache();
+  updateDigiBanxDisplay();
+
+  // ── Close modal on background click ──
+  document.getElementById("ws-modal")?.addEventListener("click", e=>{ if(e.target===e.currentTarget) closeLoadModal(); });
+
+
+
+// Share world state with DailyFix terminal via sxbz_world_v1
+(function(){
+  // On load: if DailyFix has a world state, pull prices from it into GEO_LOOKUP
+  function syncFromSharedState(){
+    try{
+      const saved = localStorage.getItem('sxbz_world_v1');
+      if(!saved) return;
+      const ws = JSON.parse(saved);
+      if(!ws?.stox) return;
+      // Sync DiGiBanx balance/portfolio from shared state
+      if(ws.digibanx){
+        window._DIGIBANX.cash_balance = ws.digibanx.cash_balance ?? 10000;
+        window._DIGIBANX.portfolio = ws.digibanx.portfolio ?? {};
+        window._DIGIBANX.transaction_log = ws.digibanx.transaction_log ?? [];
+      }
+      window._DIGIBANX.stox = ws.stox;
+      window._DIGIBANX.fix_number = ws.meta?.fix_number ?? 0;
+      window._DIGIBANX.market_phase = ws.meta?.market_phase ?? 'Pre-Fix';
+      window._DIGIBANX.host_city = ws.meta?.host_city ?? 'N/A';
+      // Update geo lookup with live prices
+      ws.stox.forEach(s=>{
+        const chg = parseFloat((s['Percent Change']||'0%').replace('%',''))||0;
+        const entry = {
+          ticker:s.Ticker, price:s.Price, pct:s['Percent Change'],
+          trend:s.Trend, volatility:s.Volatility, rank:s.Rank,
+          momentum:s['Momentum Bias'], resilience:s.Resilience,
+          source_id:s['Source ID'], branch:s.Branch,
+          market_status:s['Market Status'],
+        };
+        if(s.Subclass==='Sovereign Country' && GEO_LOOKUP?.countries) GEO_LOOKUP.countries[s.Name]=entry;
+        if(s.Subclass==='U.S. State' && GEO_LOOKUP?.states) GEO_LOOKUP.states[s.Name]=entry;
+      });
+      updateDigiBanxDisplay();
+      updateTapeFromWorldState(ws.stox);
+    }catch(e){}
+  }
+
+  // Write trades back to sxbz_world_v1 so Terminal sees them
+  const _origSaveCache = saveDigiBanxCache;
+  function saveDigiBanxCache(){
+    // Write to map cache
+    try{ localStorage.setItem('sxbz_map_v1', JSON.stringify({
+      cash_balance: window._DIGIBANX.cash_balance,
+      portfolio: window._DIGIBANX.portfolio,
+      transaction_log: (window._DIGIBANX.transaction_log||[]).slice(0,50),
+    })); }catch(e){}
+    // ALSO write back to shared world state so Terminal picks it up
+    try{
+      const saved = localStorage.getItem('sxbz_world_v1');
+      if(!saved) return;
+      const ws = JSON.parse(saved);
+      ws.digibanx.cash_balance = window._DIGIBANX.cash_balance;
+      ws.digibanx.portfolio = window._DIGIBANX.portfolio;
+      if(window._DIGIBANX.transaction_log?.length){
+        ws.digibanx.transaction_log = window._DIGIBANX.transaction_log.slice(0,200);
+      }
+      localStorage.setItem('sxbz_world_v1', JSON.stringify(ws));
+    }catch(e){}
+  }
+
+  // Run sync on load
+  syncFromSharedState();
+  // Re-sync every 5s in case Terminal ran a Fix while map was open
+  setInterval(syncFromSharedState, 5000);
+})();
+
+
+
+// ── StoxBallz Universe Nav Badge ──
+(function(){
+  function fmtCash(n){
+    return '$'+parseFloat(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+  }
+  function updateNavBadge(){
+    try{
+      var ws=JSON.parse(localStorage.getItem('sxbz_world_v1')||'{}');
+      var fix=ws.meta&&ws.meta.fix_number!=null?ws.meta.fix_number:'—';
+      var phase=ws.meta&&ws.meta.market_phase?ws.meta.market_phase:'Pre-Fix';
+      var cash=ws.digibanx&&ws.digibanx.cash_balance!=null?ws.digibanx.cash_balance:10000;
+      var fn=document.getElementById('snav-fix-num');
+      var fp=document.getElementById('snav-phase-val');
+      var fc=document.getElementById('snav-cash-val');
+      if(fn)fn.textContent=fix;
+      if(fp)fp.textContent=phase;
+      if(fc)fc.textContent=fmtCash(cash);
+    }catch(e){}
+  }
+  updateNavBadge();
+  setInterval(updateNavBadge,2000);
+  // Expose so games can call it immediately after state changes
+  window.sxbzUpdateNav=updateNavBadge;
+})();
+
+// Refresh nav after state changes
+if(window.sxbzUpdateNav)window.sxbzUpdateNav();
+</script>
+
+  <!-- World State Load Modal -->
+  <div id="ws-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(4px)">
+    <div style="background:#030c06;border:1px solid rgba(57,255,136,.3);padding:28px 32px;width:420px;max-width:95vw;font-family:'JetBrains Mono',monospace">
+      <div style="font-size:14px;color:#39ff88;letter-spacing:.2em;margin-bottom:20px;text-transform:uppercase">◈ DiGiBanx · World State I/O</div>
+      <div style="margin-bottom:12px">
+        <label style="display:block;width:100%;padding:12px;border:1px solid rgba(57,255,136,.3);color:#39ff88;font-size:10px;letter-spacing:.15em;cursor:pointer;text-align:center;background:rgba(57,255,136,.04)" for="ws-file-inp">
+          ↑ LOAD WORLD STATE JSON<br/>
+          <span style="color:#3a6b4d;font-size:9px;margin-top:4px;display:block">Export from StoxBallz Daily Fix and load here</span>
+        </label>
+        <input type="file" id="ws-file-inp" accept=".json,application/json" style="display:none" onchange="importWorldState(event)"/>
+      </div>
+      <button onclick="exportWorldState()" style="display:block;width:100%;padding:10px;border:1px solid rgba(255,179,71,.35);color:#ffb347;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.15em;cursor:pointer;background:rgba(255,179,71,.04);margin-bottom:8px;text-transform:uppercase">↓ EXPORT CURRENT STATE</button>
+      <button onclick="closeLoadModal()" style="display:block;width:100%;padding:8px;border:1px solid rgba(57,255,136,.15);color:#3a6b4d;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.15em;cursor:pointer;background:transparent;text-transform:uppercase">CANCEL</button>
+    </div>
+  </div>
+</body>
+</html>

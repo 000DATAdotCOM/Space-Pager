@@ -1,0 +1,1625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DiGiWars // Battle Simulator v1.0</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=VT323&display=swap');
+
+:root {
+  --bg: #020b08;
+  --panel: #041510;
+  --border: #0d4a2a;
+  --glow: #00ff88;
+  --glow2: #00ccff;
+  --glow3: #ff4444;
+  --glow4: #ffaa00;
+  --dim: #0a2e1a;
+  --text: #b8ffd0;
+  --textdim: #3a7a52;
+  --atk: #ff6644;
+  --def: #44aaff;
+  --move: #ffdd44;
+  --cost: #cc88ff;
+  --conq: #00ff88;
+  --red-team: #ff3333;
+  --blue-team: #33aaff;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Scanline overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,255,136,0.015) 2px,
+    rgba(0,255,136,0.015) 4px
+  );
+  pointer-events: none;
+  z-index: 1000;
+}
+
+/* CRT flicker */
+@keyframes flicker {
+  0%,100% { opacity: 1; }
+  92% { opacity: 1; }
+  93% { opacity: 0.97; }
+  94% { opacity: 1; }
+  96% { opacity: 0.98; }
+}
+body { animation: flicker 8s infinite; }
+
+/* ===== HEADER ===== */
+#header {
+  text-align: center;
+  padding: 18px 20px 10px;
+  margin-top: 36px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+
+.logo {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 2.4rem;
+  font-weight: 900;
+  color: var(--glow);
+  text-shadow: 0 0 20px var(--glow), 0 0 40px var(--glow), 0 0 80px rgba(0,255,136,0.3);
+  letter-spacing: 6px;
+}
+
+.subtitle {
+  font-family: 'VT323', monospace;
+  font-size: 1.1rem;
+  color: var(--glow2);
+  letter-spacing: 3px;
+  text-shadow: 0 0 10px var(--glow2);
+  margin-top: 2px;
+}
+
+.corner-decor {
+  position: absolute;
+  top: 10px;
+  font-family: 'VT323', monospace;
+  font-size: 0.85rem;
+  color: var(--textdim);
+}
+.corner-decor.left { left: 20px; text-align: left; }
+.corner-decor.right { right: 20px; text-align: right; }
+
+/* ===== PHASE INDICATOR ===== */
+#phase-bar {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  padding: 8px 20px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.phase-step {
+  padding: 4px 10px;
+  font-family: 'VT323', monospace;
+  font-size: 0.85rem;
+  color: var(--textdim);
+  border: 1px solid #0a2a18;
+  border-right: none;
+  white-space: nowrap;
+  transition: all 0.3s;
+  position: relative;
+}
+.phase-step:last-child { border-right: 1px solid #0a2a18; }
+.phase-step.active {
+  color: var(--glow);
+  background: rgba(0,255,136,0.08);
+  border-color: var(--glow);
+  text-shadow: 0 0 8px var(--glow);
+  box-shadow: 0 0 12px rgba(0,255,136,0.2) inset;
+}
+.phase-step.done {
+  color: var(--textdim);
+  background: rgba(0,255,136,0.03);
+  border-color: #0d4a2a;
+}
+
+/* ===== MAIN LAYOUT ===== */
+#arena {
+  display: grid;
+  grid-template-columns: 1fr 320px 1fr;
+  gap: 0;
+  min-height: calc(100vh - 120px);
+}
+
+/* ===== ARMY PANELS ===== */
+.army-panel {
+  padding: 16px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.army-panel.defender { border-right: none; border-left: 1px solid var(--border); }
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.army-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+.army-label.atk { color: var(--red-team); text-shadow: 0 0 10px var(--red-team); }
+.army-label.def { color: var(--blue-team); text-shadow: 0 0 10px var(--blue-team); }
+
+.faction-select {
+  background: var(--dim);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.75rem;
+  padding: 3px 6px;
+  outline: none;
+  cursor: pointer;
+}
+.faction-select:focus { border-color: var(--glow); }
+
+.budget-display {
+  font-family: 'VT323', monospace;
+  font-size: 1rem;
+  color: var(--cost);
+  text-shadow: 0 0 8px var(--cost);
+}
+
+/* ===== UNIT ROWS ===== */
+.unit-section-label {
+  font-size: 0.65rem;
+  color: var(--textdim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 4px 0 2px;
+  border-bottom: 1px dashed #0a2a18;
+  margin-top: 4px;
+}
+
+.unit-row {
+  display: grid;
+  grid-template-columns: 28px 1fr 60px 28px 28px;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 2px;
+  border-bottom: 1px solid rgba(13,74,42,0.3);
+  transition: background 0.2s;
+}
+.unit-row:hover { background: rgba(0,255,136,0.04); }
+
+.unit-badge {
+  width: 26px;
+  height: 26px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  border: 1px solid;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.unit-info { min-width: 0; }
+.unit-name {
+  font-size: 0.7rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.unit-stats {
+  font-size: 0.6rem;
+  color: var(--textdim);
+  display: flex;
+  gap: 5px;
+  flex-wrap: nowrap;
+}
+.stat-a { color: var(--atk); }
+.stat-d { color: var(--def); }
+.stat-m { color: var(--move); }
+.stat-c { color: var(--cost); }
+.stat-q { color: var(--conq); font-size: 0.55rem; }
+
+.count-display {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-align: center;
+  min-width: 40px;
+}
+
+.btn-adj {
+  width: 24px;
+  height: 24px;
+  background: var(--dim);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  padding: 0;
+  line-height: 1;
+}
+.btn-adj:hover {
+  border-color: var(--glow);
+  color: var(--glow);
+  background: rgba(0,255,136,0.1);
+}
+
+/* Domain color coding */
+.domain-land { border-color: #44aa44; background: rgba(40,80,40,0.3); }
+.domain-sea { border-color: #3388ff; background: rgba(30,60,100,0.3); }
+.domain-air { border-color: #aaaa33; background: rgba(80,80,20,0.3); }
+.domain-sub { border-color: #334488; background: rgba(20,30,70,0.3); }
+.domain-trap { border-color: #993333; background: rgba(70,20,20,0.3); }
+.domain-util { border-color: #aa7722; background: rgba(70,50,15,0.3); }
+
+/* ===== CENTER PANEL ===== */
+#center-panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+
+#terrain-section {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.6rem;
+  letter-spacing: 3px;
+  color: var(--glow2);
+  text-shadow: 0 0 8px var(--glow2);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.terrain-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.terrain-btn {
+  padding: 7px 4px;
+  background: var(--dim);
+  border: 1px solid var(--border);
+  color: var(--textdim);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.65rem;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.terrain-btn:hover { border-color: var(--glow2); color: var(--glow2); }
+.terrain-btn.selected {
+  border-color: var(--glow2);
+  color: var(--glow2);
+  background: rgba(0,204,255,0.1);
+  text-shadow: 0 0 8px var(--glow2);
+}
+
+.terrain-mod-display {
+  margin-top: 8px;
+  padding: 6px;
+  border: 1px dashed var(--border);
+  font-size: 0.65rem;
+  color: var(--textdim);
+  min-height: 36px;
+}
+
+/* Force summary */
+#force-summary {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.force-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.force-label { font-size: 0.65rem; color: var(--textdim); text-transform: uppercase; letter-spacing: 1px; }
+.force-val { font-family: 'VT323', monospace; font-size: 1.1rem; }
+
+.vs-divider {
+  text-align: center;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.6rem;
+  color: var(--border);
+  letter-spacing: 4px;
+  margin: 6px 0;
+}
+
+/* Resolve button */
+#resolve-section {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+#resolve-btn {
+  width: 100%;
+  padding: 14px;
+  background: rgba(0,255,136,0.07);
+  border: 2px solid var(--glow);
+  color: var(--glow);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 3px;
+  cursor: pointer;
+  text-transform: uppercase;
+  text-shadow: 0 0 10px var(--glow);
+  box-shadow: 0 0 20px rgba(0,255,136,0.15), inset 0 0 20px rgba(0,255,136,0.05);
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+#resolve-btn:hover {
+  background: rgba(0,255,136,0.15);
+  box-shadow: 0 0 40px rgba(0,255,136,0.3), inset 0 0 30px rgba(0,255,136,0.1);
+}
+#resolve-btn:active { transform: scale(0.98); }
+#resolve-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(0,255,136,0.1) 50%, transparent 100%);
+  transform: translateX(-100%);
+  transition: transform 0.4s;
+}
+#resolve-btn:hover::after { transform: translateX(100%); }
+
+#reset-btn {
+  width: 100%;
+  padding: 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--textdim);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.7rem;
+  cursor: pointer;
+  letter-spacing: 2px;
+  transition: all 0.2s;
+}
+#reset-btn:hover { border-color: var(--glow3); color: var(--glow3); }
+
+/* Outcome display */
+#outcome-display {
+  padding: 12px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#outcome-banner {
+  display: none;
+  text-align: center;
+  padding: 14px;
+  border: 2px solid;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 900;
+  letter-spacing: 3px;
+}
+#outcome-banner.victory {
+  border-color: var(--glow);
+  color: var(--glow);
+  background: rgba(0,255,136,0.1);
+  text-shadow: 0 0 15px var(--glow);
+  box-shadow: 0 0 30px rgba(0,255,136,0.2);
+}
+#outcome-banner.defeat {
+  border-color: var(--glow3);
+  color: var(--glow3);
+  background: rgba(255,68,68,0.1);
+  text-shadow: 0 0 15px var(--glow3);
+}
+#outcome-banner.stalemate {
+  border-color: var(--glow4);
+  color: var(--glow4);
+  background: rgba(255,170,0,0.1);
+  text-shadow: 0 0 15px var(--glow4);
+}
+
+.conquest-result {
+  display: none;
+  font-size: 0.7rem;
+  text-align: center;
+  padding: 6px;
+  border: 1px dashed;
+  color: var(--glow);
+  border-color: var(--glow);
+}
+
+/* ===== BATTLE LOG ===== */
+#log-section {
+  grid-column: 1 / -1;
+  border-top: 2px solid var(--border);
+  background: #010a05;
+}
+
+#log-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+
+#log-header .section-title { margin-bottom: 0; }
+.log-toggle { color: var(--textdim); font-size: 0.7rem; }
+
+#log-body {
+  height: 200px;
+  overflow-y: auto;
+  padding: 10px 16px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.7rem;
+}
+
+#log-body::-webkit-scrollbar { width: 4px; }
+#log-body::-webkit-scrollbar-track { background: var(--bg); }
+#log-body::-webkit-scrollbar-thumb { background: var(--border); }
+
+.log-entry {
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(13,74,42,0.2);
+  line-height: 1.5;
+}
+.log-entry.phase-header {
+  color: var(--glow2);
+  font-weight: bold;
+  margin-top: 6px;
+  text-shadow: 0 0 6px var(--glow2);
+  letter-spacing: 1px;
+}
+.log-entry.hit { color: var(--atk); }
+.log-entry.miss { color: var(--textdim); }
+.log-entry.event { color: var(--glow4); }
+.log-entry.conquest { color: var(--glow); font-weight: bold; }
+.log-entry.eliminated { color: var(--glow3); }
+.log-entry.system { color: var(--textdim); font-style: italic; }
+
+/* Animations */
+@keyframes pulse-glow {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.resolving { animation: pulse-glow 0.5s infinite; }
+
+@keyframes slide-in {
+  from { transform: translateX(-10px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.log-entry { animation: slide-in 0.2s ease; }
+
+/* Blinking cursor */
+@keyframes blink {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.cursor::after {
+  content: '█';
+  animation: blink 1s infinite;
+  color: var(--glow);
+}
+
+/* ===== RANDOM EVENT BANNER ===== */
+#event-banner {
+  display: none;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+  z-index: 2000;
+  background: #000;
+  border: 2px solid var(--glow4);
+  padding: 20px 30px;
+  text-align: center;
+  max-width: 400px;
+  box-shadow: 0 0 60px rgba(255,170,0,0.4);
+}
+#event-banner .event-title {
+  font-family: 'Orbitron', sans-serif;
+  color: var(--glow4);
+  font-size: 1rem;
+  letter-spacing: 3px;
+  text-shadow: 0 0 15px var(--glow4);
+}
+#event-banner .event-body {
+  font-family: 'VT323', monospace;
+  color: var(--text);
+  font-size: 1.1rem;
+  margin-top: 8px;
+}
+#event-banner .event-close {
+  margin-top: 12px;
+  padding: 6px 20px;
+  background: transparent;
+  border: 1px solid var(--glow4);
+  color: var(--glow4);
+  font-family: 'Share Tech Mono', monospace;
+  cursor: pointer;
+}
+
+/* Mobile */
+@media (max-width: 900px) {
+  #arena { grid-template-columns: 1fr; }
+  .army-panel.defender { border-left: none; border-top: 1px solid var(--border); }
+  #center-panel { border: none; border-top: 1px solid var(--border); }
+  .logo { font-size: 1.5rem; }
+}
+
+/* ═══ STOXBALLZ UNIVERSE NAV ═══ */
+#sxbz-nav{
+  position:fixed;top:0;left:0;right:0;height:36px;z-index:99999;
+  display:flex;align-items:center;
+  background:#020508;
+  border-bottom:2px solid #ffaa0030;
+  font-family:'Share Tech Mono','JetBrains Mono',monospace;
+  font-size:10px;letter-spacing:.1em;
+  user-select:none;
+}
+#sxbz-nav::after{
+  content:'';position:absolute;bottom:-1px;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,#ffaa0060,transparent);
+  pointer-events:none;
+}
+.snav-btn{
+  display:flex;align-items:center;gap:6px;
+  padding:0 14px;height:100%;min-width:0;
+  background:transparent;border:none;
+  border-right:1px solid #1a2236;
+  color:#3a4a64;cursor:pointer;
+  text-transform:uppercase;white-space:nowrap;
+  transition:color .12s,background .12s;
+  text-decoration:none;
+  font-family:inherit;font-size:inherit;letter-spacing:inherit;
+}
+.snav-btn:hover{color:#ffcc44;background:rgba(255,170,0,.05)}
+.snav-btn.snav-active{
+  color:#ffaa00;
+  border-bottom:2px solid #ffaa00;
+  background:rgba(255,170,0,.07);
+  pointer-events:none;
+}
+.snav-btn.snav-future{
+  color:#1e2a3a;cursor:default;pointer-events:none;
+  border-right:1px solid #111820;
+}
+.snav-icon{font-size:12px;flex-shrink:0}
+.snav-label{letter-spacing:.12em}
+.snav-pip{
+  width:4px;height:4px;border-radius:50%;
+  background:#ffaa00;flex-shrink:0;
+  box-shadow:0 0 4px #ffaa00;
+  animation:snav-pulse 2s ease infinite;
+}
+@keyframes snav-pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.snav-spacer{flex:1;min-width:8px}
+.snav-badges{
+  display:flex;align-items:center;gap:0;
+  border-left:1px solid #1a2236;height:100%;flex-shrink:0;
+}
+.snav-badge{
+  display:flex;align-items:center;gap:5px;
+  padding:0 12px;height:100%;
+  border-right:1px solid #111820;
+  font-size:9px;color:#2a3a50;letter-spacing:.1em;
+}
+.snav-badge span{color:#ffaa00;font-size:10px}
+#snav-fix span{color:#ffaa00}
+#snav-phase span{color:#00e5ff}
+#snav-cash span{color:#ffcc44}
+
+
+/* DiGiWars nav override — keep universe amber on black */
+#sxbz-nav { background: #020b08; border-bottom-color: #ffaa0030; }
+
+
+/* ── DiGiWars StoxBallz Hook Panel ── */
+#dw-stox-panel {
+  margin: 10px 12px;
+  padding: 10px 12px;
+  background: rgba(0,255,136,.03);
+  border: 1px solid #0d4a2a;
+  border-left: 2px solid #ffaa00;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: .7rem;
+}
+.dw-stox-hdr {
+  font-size: .65rem;
+  color: #ffaa00;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  margin-bottom: 7px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #0d4a2a;
+  text-shadow: 0 0 8px rgba(255,170,0,.4);
+}
+.dw-stox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(13,74,42,.3);
+  font-size: .68rem;
+}
+.dw-stox-row:last-of-type { border-bottom: none; }
+.dw-stox-tk   { color: #ffaa00; min-width: 44px; font-weight: 700; font-size: .65rem; }
+.dw-stox-name { color: #b8ffd0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dw-stox-shares { color: #3a7a52; font-size: .65rem; }
+.dw-stox-pts  { color: #cc88ff; font-size: .65rem; text-align: right; min-width: 48px; }
+.dw-stox-total {
+  margin-top: 7px;
+  padding-top: 5px;
+  border-top: 1px solid #0d4a2a;
+  font-family: 'Orbitron', sans-serif;
+  font-size: .65rem;
+  color: #3a7a52;
+  letter-spacing: .1em;
+}
+.dw-stox-total span { color: #cc88ff; font-size: .8rem; text-shadow: 0 0 8px rgba(204,136,255,.4); }
+
+</style>
+</head>
+<body>
+<div id="sxbz-nav" role="navigation">
+  <a class="snav-btn" href="StoxBallz_DailyFix_v2.html"><span class="snav-icon">⊞</span><span class="snav-label">Terminal</span></a>
+  <a class="snav-btn" href="StoxBallz_WorldMap.html"><span class="snav-icon">◉</span><span class="snav-label">World Map</span></a>
+  <button class="snav-btn snav-active"><span class="snav-icon">⚔</span><span class="snav-label">DiGiWars</span><span class="snav-pip"></span></button>
+  <button class="snav-btn snav-future" title="Coming Soon"><span class="snav-icon">◈</span><span class="snav-label">DiGiBanx</span></button>
+  <a class="snav-btn" href="StoxBallz_WORD.html"><span class="snav-icon">◎</span><span class="snav-label">WORD</span></a>
+  <button class="snav-btn snav-future" title="Coming Soon"><span class="snav-icon">◆</span><span class="snav-label">Museum</span></button>
+  <button class="snav-btn snav-future" title="Coming Soon"><span class="snav-icon">◉</span><span class="snav-label">Manual</span></button>
+  <div class="snav-spacer"></div>
+  <div class="snav-badges"><div class="snav-badge" id="snav-fix">Fix <span id="snav-fix-num">—</span></div><div class="snav-badge" id="snav-phase">Phase <span id="snav-phase-val">—</span></div><div class="snav-badge" id="snav-cash">◈ <span id="snav-cash-val">$10,000</span></div></div>
+</div>
+
+
+<!-- HEADER -->
+<div id="header">
+  <div class="corner-decor left">AI-ONE // v1.0<br>TBCE ACTIVE</div>
+  <div class="logo">DiGiWars</div>
+  <div class="subtitle">// BATTLE SIMULATOR — BASELINE-3 COMBAT ENGINE //</div>
+  <div class="corner-decor right">NO CHAIN<br>LOCAL SIM</div>
+</div>
+
+<!-- PHASE BAR -->
+<div id="phase-bar">
+  <div class="phase-step" id="ph0">① DEPLOY</div>
+  <div class="phase-step" id="ph1">② REVEAL</div>
+  <div class="phase-step" id="ph2">③ WHEELS</div>
+  <div class="phase-step" id="ph3">④ MINES</div>
+  <div class="phase-step" id="ph4">⑤ AA FIRE</div>
+  <div class="phase-step" id="ph5">⑥ NAVAL</div>
+  <div class="phase-step" id="ph6">⑦ AIRSTRIKES</div>
+  <div class="phase-step" id="ph7">⑧ MAIN COMBAT</div>
+  <div class="phase-step" id="ph8">⑨ CASUALTIES</div>
+  <div class="phase-step" id="ph9">⑩ CONQUEST</div>
+  <div class="phase-step" id="ph10">⑪ RESULT</div>
+</div>
+
+<!-- ARENA -->
+<div id="arena">
+
+  <!-- ATTACKER -->
+  <div class="army-panel" id="atk-panel">
+    <div class="panel-header">
+      <div>
+        <div class="army-label atk">⚔ ATTACKER FORCE</div>
+        <div class="budget-display" id="atk-budget">BUDGET: 0 pts</div>
+      </div>
+      <select class="faction-select" id="atk-faction">
+        <option>SDSF</option>
+        <option>WACAttackers</option>
+        <option>Reepz</option>
+        <option>PePe</option>
+        <option>BiB</option>
+        <option>BAYZ</option>
+        <option>PUNKDAO</option>
+      </select>
+    </div>
+    <div id="atk-units"></div>
+  </div>
+
+  <!-- CENTER -->
+  <div id="center-panel">
+
+    <div id="terrain-section">
+      <div class="section-title">// TERRAIN & MODIFIERS //</div>
+      <div class="terrain-grid" id="terrain-grid"></div>
+    <div id="dw-stox-panel">Loading territory data…</div>
+
+      <div class="terrain-mod-display" id="terrain-mod-display">Select terrain to apply combat modifier.</div>
+    </div>
+
+    <div id="force-summary">
+      <div class="section-title">// FORCE SUMMARY //</div>
+      <div class="force-row">
+        <span class="force-label">ATK POWER</span>
+        <span class="force-val" id="sum-atk-pow" style="color:var(--red-team)">0</span>
+      </div>
+      <div class="force-row">
+        <span class="force-label">ATK UNITS</span>
+        <span class="force-val" id="sum-atk-units" style="color:var(--red-team)">0</span>
+      </div>
+      <div class="vs-divider">— VS —</div>
+      <div class="force-row">
+        <span class="force-label">DEF POWER</span>
+        <span class="force-val" id="sum-def-pow" style="color:var(--blue-team)">0</span>
+      </div>
+      <div class="force-row">
+        <span class="force-label">DEF UNITS</span>
+        <span class="force-val" id="sum-def-units" style="color:var(--blue-team)">0</span>
+      </div>
+      <div class="vs-divider">— — —</div>
+      <div class="force-row">
+        <span class="force-label">CONQUERORS (ATK)</span>
+        <span class="force-val" id="sum-conq" style="color:var(--conq)">0</span>
+      </div>
+    </div>
+
+    <div id="resolve-section">
+      <button id="resolve-btn">⚡ RESOLVE BATTLE ⚡</button>
+      <button id="reset-btn">◀ RESET BATTLEFIELD</button>
+    </div>
+
+    <div id="outcome-display">
+      <div class="section-title">// BATTLE OUTCOME //</div>
+      <div id="outcome-banner"></div>
+      <div class="conquest-result" id="conquest-result"></div>
+      <div id="survivors-display" style="font-size:0.65rem; color:var(--textdim);"></div>
+    </div>
+  </div>
+
+  <!-- DEFENDER -->
+  <div class="army-panel defender" id="def-panel">
+    <div class="panel-header">
+      <select class="faction-select" id="def-faction">
+        <option>RADC</option>
+        <option>WAYC</option>
+        <option>REBC</option>
+        <option>BiB</option>
+        <option>WACAttackers</option>
+        <option>Reepz</option>
+        <option>PUNKDAO</option>
+      </select>
+      <div style="text-align:right">
+        <div class="army-label def">DEFENDER FORCE 🛡</div>
+        <div class="budget-display" id="def-budget">BUDGET: 0 pts</div>
+      </div>
+    </div>
+    <div id="def-units"></div>
+  </div>
+
+</div>
+
+<!-- BATTLE LOG (full width) -->
+<div id="log-section">
+  <div id="log-header" onclick="toggleLog()">
+    <div class="section-title">// BATTLE LOG //</div>
+    <div class="log-toggle" id="log-toggle">▼ EXPAND</div>
+  </div>
+  <div id="log-body">
+    <div class="log-entry system">[ AI-ONE COMBAT ENGINE ONLINE ]</div>
+    <div class="log-entry system">[ AWAITING FORCE DEPLOYMENT... ] <span class="cursor"></span></div>
+  </div>
+</div>
+
+<!-- RANDOM EVENT OVERLAY -->
+<div id="event-banner">
+  <div class="event-title" id="event-title"></div>
+  <div class="event-body" id="event-body"></div>
+  <button class="event-close" onclick="closeEvent()">[ ACKNOWLEDGE ]</button>
+</div>
+
+<script>
+// ===== UNIT DATA =====
+const UNITS = [
+  // Land
+  { id:'troop',   name:'Troop',         icon:'👣', domain:'land', atk:3, def:3, move:1, cost:3, conquer:true,  special:'Standard occupation unit' },
+  { id:'heavy',   name:'Heavy Trooper', icon:'🦾', domain:'land', atk:4, def:5, move:1, cost:5, conquer:true,  special:'Durable frontline unit' },
+  { id:'flame',   name:'Flame Trooper', icon:'🔥', domain:'land', atk:4, def:2, move:1, cost:4, conquer:true,  special:'Shock / anti-fortification' },
+  { id:'aa',      name:'AA Troop',       icon:'🎯', domain:'land', atk:1, def:4, move:1, cost:4, conquer:false, special:'Anti-air opening fire only' },
+  // Sea
+  { id:'sharks',  name:'Sharks',        icon:'🦈', domain:'sub',  atk:4, def:2, move:2, cost:5, conquer:false, special:'Opening strike vs naval' },
+  { id:'whales',  name:'Whales',        icon:'🐋', domain:'sea',  atk:1, def:3, move:2, cost:6, conquer:false, special:'Transport / carrier role' },
+  { id:'destro',  name:'Destroyers',    icon:'⚓', domain:'sea',  atk:4, def:4, move:2, cost:6, conquer:false, special:'Anti-Shark escort' },
+  // Air
+  { id:'jets',    name:'Jets',          icon:'✈', domain:'air',  atk:4, def:2, move:3, cost:5, conquer:false, special:'Fast tactical strike' },
+  { id:'bombers', name:'Bombers',       icon:'💣', domain:'air',  atk:5, def:1, move:3, cost:6, conquer:false, special:'Heavy strike / siege' },
+  { id:'heli',    name:'Helicopters',   icon:'🚁', domain:'air',  atk:3, def:2, move:2, cost:5, conquer:'cond', special:'Bypass AA; cond. conquer' },
+  // Utility
+  { id:'wheels',  name:'Wheels',        icon:'🛞', domain:'util', atk:1, def:1, move:2, cost:4, conquer:false, special:'Spy / sabotage / intel' },
+  // Traps
+  { id:'lmine',   name:'Land Mines',    icon:'💥', domain:'trap', atk:3, def:0, move:0, cost:2, conquer:false, special:'Triggered on land entry' },
+  { id:'smine',   name:'Sea Mines',     icon:'🌊', domain:'trap', atk:3, def:0, move:0, cost:2, conquer:false, special:'Triggered on sea entry' },
+];
+
+const DOMAINS = {
+  land:'Land', sea:'Sea', air:'Air', sub:'Submerged', util:'Utility', trap:'Trap'
+};
+
+const DOMAIN_GROUPS = ['land','sea','air','util','sub','trap'];
+
+// ===== TERRAIN =====
+const TERRAINS = [
+  { id:'open',    name:'Open Field',    atkMod:0,  defMod:0,  note:'No modifiers.' },
+  { id:'forest',  name:'Forest',        atkMod:-1, defMod:+1, note:'DEF +1 for all land units. ATK -1.' },
+  { id:'urban',   name:'Urban',         atkMod:-1, defMod:+2, note:'DEF +2 defenders. ATK -1 attackers.' },
+  { id:'coastal', name:'Coastal',       atkMod:+1, defMod:0,  note:'Naval ATK +1. Land unaffected.' },
+  { id:'desert',  name:'Desert',        atkMod:+1, defMod:-1, note:'ATK +1. DEF -1. High visibility.' },
+  { id:'mountain',name:'Mountain',      atkMod:-2, defMod:+2, note:'ATK -2. DEF +2. Tanks nullified.' },
+  { id:'sea',     name:'Open Sea',      atkMod:0,  defMod:0,  note:'Naval only. Land units invalid.' },
+  { id:'space',   name:'Void/Space',    atkMod:+1, defMod:-1, note:'Asymmetric chaos. ATK+1 / DEF-1.' },
+];
+
+// ===== RANDOM EVENTS =====
+const RANDOM_EVENTS = [
+  { title:'GAS MASTER B INTERFERES', body:'A phantom signal scrambles comms. One random attacker unit loses 1 ATK this round.' },
+  { title:'AI-ONE TACTICAL BOOST', body:'AI-ONE identifies a weakness. Attacker Wheels intel effect doubles this turn.' },
+  { title:'LADY JADE INTERVENES', body:'Lady Jade blesses the defender. DEF units gain +1 to all defense rolls this phase.' },
+  { title:'$MAC SIGNAL SURGE', body:'$MAC token surge detected. Both sides fight with +1 morale. Min casualties this round.' },
+  { title:'ICEY BLACK EVENT', body:'BiB shadow operatives disable one random defender unit for this turn.' },
+  { title:'TIME BLOCK SHIFT', body:'TBCE drift detected. Turn resolves in Block-C timing. No Slotfire bonus this round.' },
+  { title:'CIVILIAN SURGE', body:'CIV-FLOW spike — local population interferes. Random unit on each side skips combat.' },
+  { title:'GHOST DRIFT ZONE', body:'Zone collapses briefly — all mine triggers are doubled in power this phase.' },
+];
+
+// ===== STATE =====
+let atkCounts = {};
+let defCounts = {};
+let selectedTerrain = TERRAINS[0];
+let logExpanded = true;
+let battleResolved = false;
+let pendingEvent = null;
+
+UNITS.forEach(u => { atkCounts[u.id] = 0; defCounts[u.id] = 0; });
+
+// ===== RENDER =====
+function renderUnits(side) {
+  const panel = document.getElementById(side === 'atk' ? 'atk-units' : 'def-units');
+  const counts = side === 'atk' ? atkCounts : defCounts;
+  panel.innerHTML = '';
+
+  DOMAIN_GROUPS.forEach(domain => {
+    const group = UNITS.filter(u => u.domain === domain);
+    if (!group.length) return;
+
+    const label = document.createElement('div');
+    label.className = 'unit-section-label';
+    label.textContent = `— ${DOMAINS[domain]} —`;
+    panel.appendChild(label);
+
+    group.forEach(unit => {
+      const row = document.createElement('div');
+      row.className = 'unit-row';
+
+      const badge = document.createElement('div');
+      badge.className = `unit-badge domain-${unit.domain}`;
+      badge.textContent = unit.icon;
+      badge.title = unit.special;
+
+      const info = document.createElement('div');
+      info.className = 'unit-info';
+      info.innerHTML = `
+        <div class="unit-name">${unit.name}</div>
+        <div class="unit-stats">
+          <span class="stat-a">A:${unit.atk}</span>
+          <span class="stat-d">D:${unit.def}</span>
+          <span class="stat-m">M:${unit.move}</span>
+          <span class="stat-c">${unit.cost}pt</span>
+          ${unit.conquer === true ? '<span class="stat-q">★CNQ</span>' : unit.conquer === 'cond' ? '<span class="stat-q" style="color:var(--glow4)">~CNQ</span>' : ''}
+        </div>`;
+
+      const count = document.createElement('div');
+      count.className = 'count-display';
+      count.id = `${side}-count-${unit.id}`;
+      count.style.color = side === 'atk' ? 'var(--red-team)' : 'var(--blue-team)';
+      count.textContent = counts[unit.id];
+
+      const minus = document.createElement('button');
+      minus.className = 'btn-adj';
+      minus.textContent = '−';
+      minus.onclick = () => adjustUnit(side, unit.id, -1);
+
+      const plus = document.createElement('button');
+      plus.className = 'btn-adj';
+      plus.textContent = '+';
+      plus.onclick = () => adjustUnit(side, unit.id, 1);
+
+      row.appendChild(badge);
+      row.appendChild(info);
+      row.appendChild(count);
+      row.appendChild(minus);
+      row.appendChild(plus);
+      panel.appendChild(row);
+    });
+  });
+}
+
+function renderTerrain() {
+  const grid = document.getElementById('terrain-grid');
+  grid.innerHTML = '';
+  TERRAINS.forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'terrain-btn' + (t.id === selectedTerrain.id ? ' selected' : '');
+    btn.textContent = t.name;
+    btn.onclick = () => { selectedTerrain = t; renderTerrain(); updateSummary(); };
+    grid.appendChild(btn);
+  });
+  document.getElementById('terrain-mod-display').innerHTML =
+    `<span style="color:var(--glow2)">${selectedTerrain.name}</span>: ${selectedTerrain.note}`;
+}
+
+function adjustUnit(side, id, delta) {
+  if (battleResolved) return;
+  const counts = side === 'atk' ? atkCounts : defCounts;
+  counts[id] = Math.max(0, (counts[id] || 0) + delta);
+  document.getElementById(`${side}-count-${id}`).textContent = counts[id];
+  updateSummary();
+}
+
+function calcPower(counts, type) {
+  // type = 'atk' or 'def'
+  let total = 0;
+  let units = 0;
+  UNITS.forEach(u => {
+    const c = counts[u.id] || 0;
+    if (c > 0) {
+      total += c * (type === 'atk' ? u.atk : u.def);
+      units += c;
+    }
+  });
+  return { total, units };
+}
+
+function calcBudget(counts) {
+  return UNITS.reduce((s, u) => s + (counts[u.id] || 0) * u.cost, 0);
+}
+
+function updateSummary() {
+  const atkP = calcPower(atkCounts, 'atk');
+  const defP = calcPower(defCounts, 'def');
+
+  document.getElementById('sum-atk-pow').textContent = atkP.total;
+  document.getElementById('sum-atk-units').textContent = atkP.units;
+  document.getElementById('sum-def-pow').textContent = defP.total;
+  document.getElementById('sum-def-units').textContent = defP.units;
+
+  const conqCount = UNITS.filter(u => u.conquer === true)
+    .reduce((s, u) => s + (atkCounts[u.id] || 0), 0);
+  document.getElementById('sum-conq').textContent = conqCount;
+
+  document.getElementById('atk-budget').textContent = `BUDGET: ${calcBudget(atkCounts)} pts`;
+  document.getElementById('def-budget').textContent = `BUDGET: ${calcBudget(defCounts)} pts`;
+}
+
+// ===== BATTLE LOG =====
+function addLog(msg, cls = '') {
+  const log = document.getElementById('log-body');
+  const div = document.createElement('div');
+  div.className = 'log-entry' + (cls ? ' ' + cls : '');
+  div.textContent = msg;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById('log-body').innerHTML = '';
+}
+
+function toggleLog() {
+  const body = document.getElementById('log-body');
+  const toggle = document.getElementById('log-toggle');
+  if (logExpanded) {
+    body.style.display = 'none';
+    toggle.textContent = '▶ COLLAPSE';
+    logExpanded = false;
+  } else {
+    body.style.display = 'block';
+    toggle.textContent = '▼ EXPAND';
+    logExpanded = true;
+  }
+}
+
+// ===== RANDOM EVENT =====
+function triggerEvent() {
+  if (Math.random() > 0.35) return null;
+  const evt = RANDOM_EVENTS[Math.floor(Math.random() * RANDOM_EVENTS.length)];
+  return evt;
+}
+
+function showEvent(evt, callback) {
+  document.getElementById('event-title').textContent = `⚡ ${evt.title} ⚡`;
+  document.getElementById('event-body').textContent = evt.body;
+  document.getElementById('event-banner').style.display = 'block';
+  pendingEvent = callback;
+}
+
+function closeEvent() {
+  document.getElementById('event-banner').style.display = 'none';
+  if (pendingEvent) { pendingEvent(); pendingEvent = null; }
+}
+
+// ===== DICE =====
+function roll(sides) { return Math.floor(Math.random() * sides) + 1; }
+function rollHit(atk, def) { return roll(6) + atk > roll(6) + def; }
+
+// ===== BATTLE RESOLUTION =====
+async function resolveBattle() {
+  if (battleResolved) return;
+
+  const atkTotal = Object.values(atkCounts).reduce((a,b) => a+b, 0);
+  const defTotal = Object.values(defCounts).reduce((a,b) => a+b, 0);
+  if (atkTotal === 0 && defTotal === 0) { addLog('[ ERROR: No units deployed on either side. ]', 'system'); return; }
+
+  battleResolved = true;
+  clearLog();
+
+  // Mutable copies
+  let atk = {};
+  let def = {};
+  UNITS.forEach(u => { atk[u.id] = atkCounts[u.id] || 0; def[u.id] = defCounts[u.id] || 0; });
+
+  const atkFaction = document.getElementById('atk-faction').value;
+  const defFaction = document.getElementById('def-faction').value;
+  const terrain = selectedTerrain;
+
+  const atkMod = terrain.atkMod;
+  const defMod = terrain.defMod;
+
+  addLog(`╔═══════════════════════════════════════════╗`, 'phase-header');
+  addLog(`  DiGiWars Battle — TBCE Resolution Log`, 'phase-header');
+  addLog(`╚═══════════════════════════════════════════╝`, 'phase-header');
+  addLog(`  Attacker: ${atkFaction} | Defender: ${defFaction}`, '');
+  addLog(`  Terrain: ${terrain.name} | ATK mod: ${atkMod >= 0 ? '+' : ''}${atkMod} | DEF mod: ${defMod >= 0 ? '+' : ''}${defMod}`, '');
+
+  let atkCasualties = 0;
+  let defCasualties = 0;
+
+  // Helper — process hits
+  function processPhaseHits(phaseLabel, attackerUnits, defenderUnits, atkSide, defSide) {
+    setPhase(phaseLabel);
+    addLog(``, '');
+    addLog(`▶ PHASE: ${phaseLabel}`, 'phase-header');
+    let anyAction = false;
+
+    attackerUnits.forEach(uid => {
+      const unit = UNITS.find(u => u.id === uid);
+      const count = atkSide === 'atk' ? atk[uid] : def[uid];
+      if (!count) return;
+
+      const targets = defenderUnits.filter(tid => {
+        const tUnit = UNITS.find(u => u.id === tid);
+        const tCount = atkSide === 'atk' ? def[tid] : atk[tid];
+        return tCount > 0 && tUnit;
+      });
+      if (!targets.length) {
+        addLog(`  ${unit.icon} ${unit.name}×${count}: No valid targets.`, 'miss');
+        return;
+      }
+
+      for (let i = 0; i < count; i++) {
+        const tgt = targets[Math.floor(Math.random() * targets.length)];
+        const tgtUnit = UNITS.find(u => u.id === tgt);
+        const myAtk = unit.atk + (atkSide === 'atk' ? atkMod : defMod);
+        const theirDef = tgtUnit.def + (atkSide === 'atk' ? defMod : atkMod);
+        const hit = rollHit(Math.max(0, myAtk), Math.max(0, theirDef));
+        anyAction = true;
+        if (hit) {
+          if (atkSide === 'atk') { def[tgt] = Math.max(0, def[tgt] - 1); defCasualties++; }
+          else { atk[tgt] = Math.max(0, atk[tgt] - 1); atkCasualties++; }
+          addLog(`  ${unit.icon} ${unit.name} HIT → ${tgtUnit.icon} ${tgtUnit.name} [${atkSide === 'atk' ? 'DEF' : 'ATK'} -1]`, 'hit');
+        } else {
+          addLog(`  ${unit.icon} ${unit.name} MISS vs ${tgtUnit.icon} ${tgtUnit.name}`, 'miss');
+        }
+      }
+    });
+    if (!anyAction) addLog(`  [ No active units this phase ]`, 'system');
+  }
+
+  // ----- PHASE 1: REVEAL -----
+  setPhase('REVEAL');
+  addLog(``, '');
+  addLog(`▶ PHASE 1: REVEAL ORDERS`, 'phase-header');
+  addLog(`  ${atkFaction} deploys: ${summarizeForce(atk)}`, '');
+  addLog(`  ${defFaction} deploys: ${summarizeForce(def)}`, '');
+
+  await delay(400);
+
+  // ----- PHASE 2: WHEELS INTEL -----
+  setPhase('WHEELS');
+  addLog(``, '');
+  addLog(`▶ PHASE 2: WHEELS / INTEL EFFECTS`, 'phase-header');
+  const atkWheels = atk['wheels'] || 0;
+  const defWheels = def['wheels'] || 0;
+  if (atkWheels > 0) addLog(`  ATK Wheels (×${atkWheels}): Intel gathered — defender positioning revealed. ATK +${atkWheels} effective next phase.`, 'event');
+  if (defWheels > 0) addLog(`  DEF Wheels (×${defWheels}): Counter-intel active — attacker unit masked. DEF +${defWheels} next phase.`, 'event');
+  if (!atkWheels && !defWheels) addLog(`  No Wheels deployed. Intel phase skipped.`, 'system');
+
+  await delay(400);
+
+  // ----- PHASE 3: MINES -----
+  setPhase('MINES');
+  addLog(``, '');
+  addLog(`▶ PHASE 3: MINE TRIGGERS`, 'phase-header');
+  const defLmines = def['lmine'] || 0;
+  const defSmines = def['smine'] || 0;
+  if (defLmines > 0) {
+    const mHits = Math.floor(defLmines * (roll(3) / 3));
+    addLog(`  DEF Land Mines (×${defLmines}) trigger → ${mHits} ATK land units hit!`, 'hit');
+    const landTargets = ['troop','heavy','flame','wheels','aa'];
+    let mLeft = mHits;
+    landTargets.forEach(tid => { if (mLeft > 0 && atk[tid] > 0) { const take = Math.min(mLeft, atk[tid]); atk[tid] -= take; atkCasualties += take; mLeft -= take; } });
+  }
+  if (defSmines > 0) {
+    const mHits = Math.floor(defSmines * (roll(3) / 3));
+    addLog(`  DEF Sea Mines (×${defSmines}) trigger → ${mHits} ATK naval units hit!`, 'hit');
+    const seaTargets = ['sharks','whales','destro'];
+    let mLeft = mHits;
+    seaTargets.forEach(tid => { if (mLeft > 0 && atk[tid] > 0) { const take = Math.min(mLeft, atk[tid]); atk[tid] -= take; atkCasualties += take; mLeft -= take; } });
+  }
+  if (!defLmines && !defSmines) addLog(`  No mines deployed.`, 'system');
+
+  await delay(400);
+
+  // ----- PHASE 4: AA FIRE -----
+  setPhase('AA FIRE');
+  addLog(``, '');
+  addLog(`▶ PHASE 4: AA OPENING FIRE (targets Jets/Bombers only)`, 'phase-header');
+  const defAA = def['aa'] || 0;
+  const atkAA = atk['aa'] || 0;
+  if (defAA > 0) {
+    ['jets','bombers'].forEach(aid => {
+      if (atk[aid] > 0) {
+        const hits = Math.floor(defAA * roll(3) / 4);
+        const took = Math.min(hits, atk[aid]);
+        atk[aid] -= took; atkCasualties += took;
+        addLog(`  DEF AA ×${defAA} → ATK ${aid} ×${took} destroyed`, 'hit');
+      }
+    });
+  }
+  if (atkAA > 0) {
+    ['jets','bombers'].forEach(aid => {
+      if (def[aid] > 0) {
+        const hits = Math.floor(atkAA * roll(3) / 4);
+        const took = Math.min(hits, def[aid]);
+        def[aid] -= took; defCasualties += took;
+        addLog(`  ATK AA ×${atkAA} → DEF ${aid} ×${took} destroyed`, 'hit');
+      }
+    });
+  }
+  if (!defAA && !atkAA) addLog(`  No AA deployed.`, 'system');
+
+  await delay(400);
+
+  // ----- PHASE 5: NAVAL OPENING -----
+  setPhase('NAVAL');
+  addLog(``, '');
+  addLog(`▶ PHASE 5: NAVAL OPENING ACTIONS (Sharks / Destroyers)`, 'phase-header');
+  // Sharks vs Whales, Destroyers vs Sharks
+  processPhaseHits('NAVAL-ATK', ['sharks'], ['whales','destro'], 'atk', 'def');
+  processPhaseHits('NAVAL-DEF', ['destro'], ['sharks','whales'], 'def', 'atk');
+
+  await delay(400);
+
+  // ----- PHASE 6: AIRSTRIKES -----
+  setPhase('AIRSTRIKES');
+  addLog(``, '');
+  addLog(`▶ PHASE 6: AIR STRIKE PHASE`, 'phase-header');
+  processPhaseHits('AIRSTRIKE-ATK', ['jets','bombers','heli'], ['troop','heavy','flame','aa','whales','destro'], 'atk', 'def');
+  processPhaseHits('AIRSTRIKE-DEF', ['jets','bombers','heli'], ['troop','heavy','flame','aa'], 'def', 'atk');
+
+  // Random event check
+  const evt = triggerEvent();
+  if (evt) {
+    await delay(300);
+    await new Promise(resolve => showEvent(evt, resolve));
+    addLog(`  ⚡ EVENT: ${evt.title} — ${evt.body}`, 'event');
+  }
+
+  await delay(400);
+
+  // ----- PHASE 7: MAIN COMBAT -----
+  setPhase('MAIN COMBAT');
+  addLog(``, '');
+  addLog(`▶ PHASE 7: MAIN SIMULTANEOUS COMBAT`, 'phase-header');
+  processPhaseHits('MAIN-ATK', ['troop','heavy','flame','wheels'], ['troop','heavy','flame','aa'], 'atk', 'def');
+  processPhaseHits('MAIN-DEF', ['troop','heavy','flame'], ['troop','heavy','flame','aa'], 'def', 'atk');
+
+  await delay(400);
+
+  // ----- PHASE 8: CASUALTIES -----
+  setPhase('CASUALTIES');
+  addLog(``, '');
+  addLog(`▶ PHASE 8: CASUALTY REMOVAL`, 'phase-header');
+  addLog(`  ATTACKER total losses: ${atkCasualties} units`, atkCasualties > 0 ? 'eliminated' : 'system');
+  addLog(`  DEFENDER total losses: ${defCasualties} units`, defCasualties > 0 ? 'eliminated' : 'system');
+
+  const atkSurvivors = Object.values(atk).reduce((a,b) => a+b, 0);
+  const defSurvivors = Object.values(def).reduce((a,b) => a+b, 0);
+  addLog(`  ATK survivors: ${atkSurvivors}  |  DEF survivors: ${defSurvivors}`, '');
+
+  await delay(400);
+
+  // ----- PHASE 9: CONQUEST CHECK -----
+  setPhase('CONQUEST');
+  addLog(``, '');
+  addLog(`▶ PHASE 9: CONQUEST CHECK`, 'phase-header');
+  const atkConquerors = ['troop','heavy','flame'].reduce((s, uid) => s + (atk[uid] || 0), 0);
+  const heliConq = (atk['heli'] || 0) > 0 && atkConquerors > 0;
+  const totalConquerors = atkConquerors + (heliConq ? atk['heli'] : 0);
+
+  addLog(`  ATK conquerors alive: ${atkConquerors} (Troop/Heavy/Flame)`, '');
+  if (heliConq) addLog(`  Helicopter conditional conquest: ACTIVE (paired with surviving land force)`, 'event');
+
+  let conquered = false;
+  if (defSurvivors === 0 && totalConquerors > 0) {
+    conquered = true;
+    addLog(`  CONQUEST CONFIRMED — Attacker territory seized!`, 'conquest');
+  } else if (defSurvivors === 0 && totalConquerors === 0) {
+    addLog(`  DEFENDER ELIMINATED but no conquerors remain — CONTESTED ZONE.`, 'event');
+  } else if (atkSurvivors === 0) {
+    addLog(`  ATTACKER ELIMINATED — No conquest possible.`, 'eliminated');
+  } else {
+    addLog(`  Zone holds — defender forces remain. No conquest.`, 'system');
+  }
+
+  await delay(400);
+
+  // ----- PHASE 10: RESULT -----
+  setPhase('RESULT');
+  addLog(``, '');
+  addLog(`▶ PHASE 10: FINAL RESULT`, 'phase-header');
+
+  const banner = document.getElementById('outcome-banner');
+  const conquestDiv = document.getElementById('conquest-result');
+  const survivorsDiv = document.getElementById('survivors-display');
+
+  if (atkSurvivors > defSurvivors || (atkSurvivors > 0 && defSurvivors === 0)) {
+    banner.className = 'victory';
+    banner.textContent = `⚡ ${atkFaction} VICTORY ⚡`;
+    banner.style.display = 'block';
+    addLog(`  >>> ${atkFaction} WINS THE BATTLE <<<`, 'conquest');
+  } else if (defSurvivors > atkSurvivors || (defSurvivors > 0 && atkSurvivors === 0)) {
+    banner.className = 'defeat';
+    banner.textContent = `🛡 ${defFaction} HOLDS THE LINE 🛡`;
+    banner.style.display = 'block';
+    addLog(`  >>> ${defFaction} REPELS THE ATTACK <<<`, 'hit');
+  } else {
+    banner.className = 'stalemate';
+    banner.textContent = `⚖ STALEMATE — FORCES EXHAUSTED ⚖`;
+    banner.style.display = 'block';
+    addLog(`  >>> BATTLE INCONCLUSIVE <<<`, 'event');
+  }
+
+  if (conquered) {
+    conquestDiv.style.display = 'block';
+    conquestDiv.textContent = `★ TERRITORY CONQUERED — Zone transfers to ${atkFaction} ★`;
+  } else if (defSurvivors === 0 && totalConquerors === 0) {
+    conquestDiv.style.display = 'block';
+    conquestDiv.style.borderColor = 'var(--glow4)';
+    conquestDiv.style.color = 'var(--glow4)';
+    conquestDiv.textContent = `⚠ CONTESTED ZONE — No occupying force. Instability rising.`;
+  }
+
+  survivorsDiv.innerHTML = `
+    <div style="margin-top:8px;color:var(--red-team)">ATK survivors: ${summarizeForce(atk)}</div>
+    <div style="color:var(--blue-team)">DEF survivors: ${summarizeForce(def)}</div>
+  `;
+
+  addLog(`═══════════════════════════════════════════`, 'phase-header');
+  addLog(`  Battle complete. Reset to run another engagement.`, 'system');
+}
+
+function summarizeForce(counts) {
+  const parts = [];
+  UNITS.forEach(u => { if (counts[u.id] > 0) parts.push(`${u.icon}${u.name}×${counts[u.id]}`); });
+  return parts.length ? parts.join(', ') : 'NONE';
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+const PHASE_IDS = ['ph0','ph1','ph2','ph3','ph4','ph5','ph6','ph7','ph8','ph9','ph10'];
+let currentPhase = 0;
+function setPhase(name) {
+  PHASE_IDS.forEach((id, i) => {
+    const el = document.getElementById(id);
+    el.classList.remove('active', 'done');
+    if (i < currentPhase) el.classList.add('done');
+    else if (i === currentPhase) el.classList.add('active');
+  });
+  currentPhase++;
+}
+
+
+  // ── Save battle outcome to world state ──
+  (function(){
+    var outcome = 'stalemate';
+    if(banner && banner.className === 'victory') outcome = 'atk_win';
+    else if(banner && banner.className === 'defeat') outcome = 'def_win';
+    saveBattleOutcome({
+      attacker:      atkFaction,
+      defender:      defFaction,
+      terrain:       terrain.name,
+      outcome:       outcome,
+      conquered:     conquered,
+      atkCasualties: atkCasualties,
+      defCasualties: defCasualties,
+    });
+  })();
+
+function resetBattle() {
+  battleResolved = false;
+  currentPhase = 0;
+  UNITS.forEach(u => { atkCounts[u.id] = 0; defCounts[u.id] = 0; });
+  PHASE_IDS.forEach(id => { const el = document.getElementById(id); el.classList.remove('active','done'); });
+  document.getElementById('ph0').classList.add('active');
+
+  document.getElementById('outcome-banner').style.display = 'none';
+  document.getElementById('conquest-result').style.display = 'none';
+  document.getElementById('survivors-display').innerHTML = '';
+
+  renderUnits('atk');
+  renderUnits('def');
+  updateSummary();
+  clearLog();
+  addLog('[ AI-ONE COMBAT ENGINE ONLINE ]', 'system');
+  addLog('[ BATTLEFIELD RESET — AWAITING FORCE DEPLOYMENT... ]', 'system');
+}
+
+// ===== INIT =====
+document.getElementById('ph0').classList.add('active');
+renderUnits('atk');
+renderUnits('def');
+renderTerrain();
+updateSummary();
+document.getElementById('resolve-btn').onclick = resolveBattle;
+document.getElementById('reset-btn').onclick = resetBattle;
+document.getElementById('log-body').style.display = 'block';
+
+
+// ── StoxBallz Universe Nav Badge ──
+(function(){
+  function fmtCash(n){
+    return '$'+parseFloat(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+  }
+  function updateNavBadge(){
+    try{
+      var ws=JSON.parse(localStorage.getItem('sxbz_world_v1')||'{}');
+      var fix=ws.meta&&ws.meta.fix_number!=null?ws.meta.fix_number:'—';
+      var phase=ws.meta&&ws.meta.market_phase?ws.meta.market_phase:'Pre-Fix';
+      var cash=ws.digibanx&&ws.digibanx.cash_balance!=null?ws.digibanx.cash_balance:10000;
+      var fn=document.getElementById('snav-fix-num');
+      var fp=document.getElementById('snav-phase-val');
+      var fc=document.getElementById('snav-cash-val');
+      if(fn)fn.textContent=fix;
+      if(fp)fp.textContent=phase;
+      if(fc)fc.textContent=fmtCash(cash);
+    }catch(e){}
+  }
+  updateNavBadge();
+  setInterval(updateNavBadge,2000);
+  // Expose so games can call it immediately after state changes
+  window.sxbzUpdateNav=updateNavBadge;
+})();
+
+
+/* ═══════════════════════════════════════════════════
+   DiGiWars — StoxBallz World State Hook
+   Territory shares → war budget
+   Battle outcomes → world state log
+═══════════════════════════════════════════════════ */
+
+// Budget conversion: 1 share of a geo stox = 2 war budget points
+const WAR_BUDGET_PER_SHARE = 2;
+// Base budget every player gets regardless
+const WAR_BASE_BUDGET = 20;
+
+let warBudgetFromStox = 0;   // loaded from world state
+let playerPortfolio   = {};  // snapshot from world state
+let wsFixNumber       = 0;
+let wsGeoStox         = [];  // [{Name, Ticker, Source ID, Subclass, Shares}]
+
+function loadStoxWarBudget() {
+  try {
+    var raw = localStorage.getItem('sxbz_world_v1');
+    if (!raw) return;
+    var ws = JSON.parse(raw);
+    if (!ws || !ws.digibanx || !ws.stox) return;
+
+    playerPortfolio = ws.digibanx.portfolio || {};
+    wsFixNumber     = ws.meta.fix_number || 0;
+
+    // Collect geo stox the player owns (countries + states)
+    var geoSubclasses = ['Sovereign Country','U.S. State','U.S. City','International City','Federal District'];
+    wsGeoStox = [];
+    ws.stox.forEach(function(s) {
+      if (geoSubclasses.indexOf(s.Subclass) < 0) return;
+      var pos = playerPortfolio[s['Source ID']];
+      if (!pos || !pos.shares) return;
+      wsGeoStox.push({
+        name:     s.Name,
+        ticker:   s.Ticker,
+        sourceId: s['Source ID'],
+        subclass: s.Subclass,
+        shares:   pos.shares,
+        price:    parseFloat(s.Price) || 100,
+        budget:   pos.shares * WAR_BUDGET_PER_SHARE,
+      });
+    });
+
+    // Total war budget from stox holdings
+    warBudgetFromStox = wsGeoStox.reduce(function(s, g) { return s + g.budget; }, 0);
+
+    renderStoxPanel();
+    injectFactionOptions();
+  } catch(e) {
+    console.warn('DiGiWars: could not load world state', e);
+  }
+}
+
+function renderStoxPanel() {
+  var panel = document.getElementById('dw-stox-panel');
+  if (!panel) return;
+
+  var totalBudget = WAR_BASE_BUDGET + warBudgetFromStox;
+  var fixLabel = wsFixNumber > 0 ? 'Fix #' + wsFixNumber : 'Genesis';
+
+  if (wsGeoStox.length === 0) {
+    panel.innerHTML =
+      '<div class="dw-stox-hdr">◈ DiGiBanx · Territory Holdings</div>' +
+      '<div class="dw-stox-row" style="color:var(--textdim)">' +
+        'No geo stox owned. Base budget: ' + WAR_BASE_BUDGET + ' pts.<br>' +
+        '<span style="font-size:.65rem">Buy territory stox in the Terminal to unlock war funds.</span>' +
+      '</div>' +
+      '<div class="dw-stox-total">WAR BUDGET: <span>' + totalBudget + ' pts</span></div>';
+  } else {
+    var rows = wsGeoStox.map(function(g) {
+      return '<div class="dw-stox-row">' +
+        '<span class="dw-stox-tk">' + g.ticker + '</span>' +
+        '<span class="dw-stox-name">' + g.name + '</span>' +
+        '<span class="dw-stox-shares">×' + g.shares + '</span>' +
+        '<span class="dw-stox-pts">+' + g.budget + ' pts</span>' +
+      '</div>';
+    }).join('');
+
+    panel.innerHTML =
+      '<div class="dw-stox-hdr">◈ DiGiBanx · Territory Holdings · ' + fixLabel + '</div>' +
+      rows +
+      '<div class="dw-stox-total">WAR BUDGET: <span>' + totalBudget + ' pts</span></div>';
+  }
+
+  // Update the budget displays to show territory-funded values
+  var atkBudget = document.getElementById('atk-budget');
+  var defBudget = document.getElementById('def-budget');
+  if (atkBudget) atkBudget.dataset.territoryBudget = totalBudget;
+  if (defBudget) defBudget.dataset.territoryBudget = totalBudget;
+}
+
+function injectFactionOptions() {
+  // Add owned geo stox as selectable factions alongside existing ones
+  if (wsGeoStox.length === 0) return;
+
+  var selects = ['atk-faction','def-faction'];
+  selects.forEach(function(sid) {
+    var sel = document.getElementById(sid);
+    if (!sel) return;
+
+    // Remove old geo options first
+    var oldGeo = sel.querySelectorAll('option[data-geo]');
+    oldGeo.forEach(function(o) { o.remove(); });
+
+    // Add separator
+    var sep = document.createElement('option');
+    sep.disabled = true;
+    sep.textContent = '── Territory Factions ──';
+    sep.setAttribute('data-geo', '1');
+    sel.appendChild(sep);
+
+    wsGeoStox.forEach(function(g) {
+      var opt = document.createElement('option');
+      opt.value = g.ticker + ' [' + g.subclass + ']';
+      opt.textContent = g.ticker + ' · ' + g.name + ' (' + g.shares + ' shares)';
+      opt.setAttribute('data-geo', '1');
+      opt.setAttribute('data-budget', g.budget);
+      sel.appendChild(opt);
+    });
+  });
+}
+
+// Save battle outcome back to world state
+function saveBattleOutcome(result) {
+  try {
+    var raw = localStorage.getItem('sxbz_world_v1');
+    if (!raw) return;
+    var ws = JSON.parse(raw);
+    if (!ws.digibanx) ws.digibanx = {};
+    if (!ws.digibanx.battle_log) ws.digibanx.battle_log = [];
+
+    var entry = {
+      ts:          new Date().toISOString(),
+      fix:         wsFixNumber,
+      attacker:    result.attacker,
+      defender:    result.defender,
+      terrain:     result.terrain,
+      outcome:     result.outcome,        // 'atk_win' | 'def_win' | 'stalemate'
+      conquered:   result.conquered,
+      atk_casualties: result.atkCasualties,
+      def_casualties: result.defCasualties,
+    };
+
+    ws.digibanx.battle_log.unshift(entry);
+    // Keep last 50 battles
+    ws.digibanx.battle_log = ws.digibanx.battle_log.slice(0, 50);
+
+    // Market effect: if territory stox involved, add a tiny sentiment nudge
+    // (Terminal will apply this on next Fix)
+    if (!ws.digibanx.pending_events) ws.digibanx.pending_events = [];
+    ws.digibanx.pending_events.push({
+      type: 'battle',
+      ts:   entry.ts,
+      msg:  result.attacker + ' vs ' + result.defender + ' → ' + result.outcome.replace('_',' ').toUpperCase() + ' at ' + result.terrain,
+    });
+
+    localStorage.setItem('sxbz_world_v1', JSON.stringify(ws));
+    if (window.sxbzUpdateNav) window.sxbzUpdateNav();
+  } catch(e) {
+    console.warn('DiGiWars: could not save battle outcome', e);
+  }
+}
+
+// Load on start
+loadStoxWarBudget();
+// Re-check every 10s in case player ran a Fix in another tab
+setInterval(loadStoxWarBudget, 10000);
+
+</script>
+</body>
+</html>
