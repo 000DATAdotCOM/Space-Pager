@@ -1,0 +1,995 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Space News Machine // AREA181</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Barlow+Condensed:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ===== AREA181 PALETTE ===== */
+:root {
+  --void:#03040a; --ink:#060810; --shell:#090c14;
+  --panel:#0c1018; --panel2:#101520; --panel3:#141c28;
+  --rim:#1a2236; --rim2:#222e44; --wire:#2a3a54;
+  --amber:#ffaa00; --amber2:#ffcc44; --amber3:#ffd966;
+  --amber-glow:rgba(255,170,0,0.12); --amber-line:rgba(255,170,0,0.3);
+  --green:#00e676; --red:#ff1744; --cyan:#00e5ff;
+  --t1:#e8f0ff; --t2:#8090b0; --t3:#3a4a64; --t4:#1e2a3e;
+  --fo:'Orbitron',sans-serif; --fm:'Share Tech Mono',monospace;
+  --radius:6px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;background:var(--void);color:var(--t1);}
+body{font-family:var(--fm);line-height:1.45;padding-top:34px;}
+
+/* ===== SCANLINE ===== */
+body::after{
+  content:'';position:fixed;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.022) 3px,rgba(0,0,0,0.022) 4px);
+  pointer-events:none;z-index:9998;
+}
+
+/* ===== NAV BAR ===== */
+#sxbz-nav{
+  position:fixed;top:0;left:0;right:0;height:34px;z-index:10001;
+  background:#060810;border-bottom:1px solid rgba(255,170,0,0.2);
+  display:flex;align-items:stretch;overflow:hidden;
+}
+.snav-btn{
+  display:flex;align-items:center;gap:5px;padding:0 14px;
+  border:none;border-right:1px solid #111820;background:transparent;
+  color:#3a4a64;font-family:'Share Tech Mono',monospace;font-size:11px;
+  letter-spacing:.08em;cursor:pointer;text-decoration:none;transition:all 0.15s;
+  white-space:nowrap;
+}
+.snav-btn:hover{color:#ffaa00;background:rgba(255,170,0,0.05);}
+.snav-btn.snav-active{color:#ffaa00;border-bottom:2px solid #ffaa00;}
+.snav-btn.snav-future{color:#1e2a3e;cursor:default;pointer-events:none;}
+.snav-icon{font-size:12px;}
+.snav-spacer{flex:1;}
+.snav-badge{display:flex;align-items:center;gap:5px;padding:0 12px;height:100%;border-right:1px solid #111820;font-size:9px;color:#2a3a50;letter-spacing:.1em;}
+.snav-badge span{color:#ffaa00;font-size:10px;}
+
+/* ===== TICKER ===== */
+.ticker-wrap{
+  overflow:hidden;white-space:nowrap;
+  border-bottom:1px solid rgba(255,170,0,0.15);
+  background:rgba(0,0,0,0.3);
+  position:relative;
+}
+.ticker-wrap::before{
+  content:'◈ SPACEWIRE ◈';position:absolute;left:0;top:0;bottom:0;
+  display:flex;align-items:center;padding:0 12px;
+  background:var(--amber);color:var(--ink);font-family:var(--fo);
+  font-size:9px;letter-spacing:.15em;font-weight:700;z-index:2;
+}
+.ticker-inner{display:inline-block;padding:6px 0 6px 140px;animation:ticker-scroll 40s linear infinite;}
+.ticker-pill{
+  display:inline-flex;align-items:center;gap:8px;margin-right:28px;
+  font-size:10px;color:var(--t2);letter-spacing:.05em;
+}
+.ticker-pill .lane-tag{color:var(--amber);font-size:9px;}
+@keyframes ticker-scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* ===== LAYOUT ===== */
+.page-wrap{max-width:1480px;margin:0 auto;padding:14px 16px 40px;}
+
+.page-header{
+  display:flex;align-items:center;gap:18px;padding:16px 0 14px;
+  border-bottom:1px solid var(--rim);margin-bottom:14px;
+}
+.masthead{font-family:var(--fo);font-size:18px;font-weight:900;color:var(--amber);letter-spacing:.12em;text-transform:uppercase;}
+.masthead small{display:block;font-size:9px;font-weight:400;color:var(--t3);letter-spacing:.2em;margin-top:2px;}
+.masthead .op-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  border:1px solid var(--amber-line);background:var(--amber-glow);
+  padding:3px 10px;border-radius:2px;font-size:9px;color:var(--amber2);
+  letter-spacing:.18em;margin-top:6px;
+}
+.hdr-controls{margin-left:auto;display:flex;gap:8px;align-items:center;}
+
+/* Status pills */
+.status-pill{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:4px 10px;border:1px solid var(--rim2);
+  border-radius:2px;font-size:9px;letter-spacing:.12em;color:var(--t3);
+}
+.status-pill.live{border-color:rgba(0,230,118,.3);color:var(--green);}
+.status-pip{width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:blink-dot 1.4s ease-in-out infinite;}
+@keyframes blink-dot{0%,100%{opacity:1}50%{opacity:0.15}}
+
+/* ===== MAIN GRID ===== */
+.main-grid{
+  display:grid;
+  grid-template-columns:280px 1fr 400px;
+  gap:12px;
+}
+@media(max-width:1100px){.main-grid{grid-template-columns:1fr;}}
+
+/* ===== PANELS ===== */
+.panel{
+  background:linear-gradient(180deg,var(--panel),var(--panel2));
+  border:1px solid var(--rim);border-radius:var(--radius);
+  overflow:hidden;
+}
+.panel-hdr{
+  padding:10px 14px;border-bottom:1px solid var(--rim);
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--shell);
+}
+.panel-title{font-family:var(--fo);font-size:10px;letter-spacing:.15em;color:var(--amber);text-transform:uppercase;}
+.panel-sub{font-size:9px;color:var(--t3);letter-spacing:.08em;}
+.panel-body{padding:12px;}
+
+/* ===== SOURCE LANES ===== */
+.lane-switch{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:9px 12px;border-radius:var(--radius);
+  background:rgba(255,255,255,.015);border:1px solid var(--rim);
+  margin-bottom:6px;
+}
+.lane-switch:last-child{margin-bottom:0;}
+.lane-switch b{display:block;font-size:11px;color:var(--t1);letter-spacing:.05em;}
+.lane-switch small{font-size:9px;color:var(--t3);}
+.lane-toggle-wrap{display:flex;align-items:center;gap:6px;font-size:9px;color:var(--t3);}
+input[type="checkbox"]{accent-color:var(--amber);}
+details summary{font-size:10px;color:var(--t3);cursor:pointer;padding:8px 0;letter-spacing:.05em;}
+details summary:hover{color:var(--amber);}
+
+/* ===== FEED GRID ===== */
+.feed-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:10px;padding:12px;
+  max-height:440px;overflow-y:auto;
+}
+.feed-grid::-webkit-scrollbar{width:4px;}
+.feed-grid::-webkit-scrollbar-track{background:var(--void);}
+.feed-grid::-webkit-scrollbar-thumb{background:var(--rim2);}
+.feed-col{display:flex;flex-direction:column;gap:8px;}
+.feed-lane{
+  padding:8px;border-radius:var(--radius);
+  border:1px dashed var(--rim);background:rgba(255,255,255,.01);
+}
+.feed-lane-hdr{
+  font-size:9px;letter-spacing:.12em;margin-bottom:6px;
+  font-family:var(--fo);text-transform:uppercase;
+}
+.headline-card{
+  padding:8px 10px;border-radius:4px;
+  background:rgba(255,255,255,.025);
+  border:1px solid var(--rim);cursor:pointer;
+  transition:border-color .12s,background .12s;
+  animation:fadein .3s ease;
+}
+.headline-card:hover{border-color:var(--amber-line);background:var(--amber-glow);}
+.headline-card b{display:block;font-size:11px;color:var(--t1);font-family:var(--fm);line-height:1.35;margin-bottom:3px;}
+.headline-card small{font-size:9px;color:var(--t3);}
+@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* ===== LAB ===== */
+.lab-body{display:flex;flex-direction:column;gap:10px;padding:12px;}
+.lab-editor{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.lab-field label{display:block;font-size:9px;color:var(--t3);letter-spacing:.1em;margin-bottom:4px;text-transform:uppercase;}
+textarea,input[type="text"]{
+  width:100%;padding:9px 11px;
+  border-radius:4px;border:1px solid var(--rim2);
+  background:rgba(0,0,0,.35);color:var(--t1);
+  font-family:var(--fm);font-size:11px;resize:vertical;
+  transition:border-color .15s;
+}
+textarea:focus,input[type="text"]:focus{outline:none;border-color:var(--amber-line);}
+.meta-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;}
+
+/* ===== KNOBS ===== */
+.knobs-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.knob-item label{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:10px;color:var(--t2);letter-spacing:.05em;margin-bottom:4px;
+}
+.knob-item label span{color:var(--amber);font-family:var(--fo);font-size:10px;}
+input[type="range"]{
+  -webkit-appearance:none;width:100%;height:2px;
+  background:var(--rim2);border-radius:1px;cursor:pointer;
+}
+input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:12px;height:12px;
+  border-radius:50%;background:var(--amber);
+  box-shadow:0 0 8px rgba(255,170,0,.5);cursor:pointer;
+}
+
+/* ===== BUTTONS ===== */
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;}
+.btn{
+  appearance:none;border:1px solid var(--rim2);background:rgba(255,255,255,.03);
+  color:var(--t1);padding:7px 14px;border-radius:3px;cursor:pointer;
+  font-family:var(--fm);font-size:10px;letter-spacing:.08em;
+  transition:all .15s;white-space:nowrap;
+}
+.btn:hover{border-color:var(--amber-line);color:var(--amber);background:var(--amber-glow);}
+.btn.primary{border-color:var(--amber-line);color:var(--amber);background:var(--amber-glow);}
+.btn.primary:hover{background:rgba(255,170,0,.2);box-shadow:0 0 12px rgba(255,170,0,.2);}
+.btn.emit{border-color:rgba(0,230,118,.35);color:var(--green);background:rgba(0,230,118,.06);}
+.btn.emit:hover{background:rgba(0,230,118,.12);box-shadow:0 0 10px rgba(0,230,118,.15);}
+.btn.warn{border-color:rgba(255,23,68,.4);color:var(--red);background:rgba(255,23,68,.06);}
+.btn.ghost{background:transparent;color:var(--t3);}
+
+/* ===== SIGNAL OUTPUT ===== */
+.signal-out{
+  border:1px solid var(--rim2);border-radius:4px;
+  background:rgba(0,0,0,.25);padding:10px 12px;
+}
+.signal-out-hdr{
+  display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;
+}
+.signal-tag{
+  font-family:var(--fo);font-size:9px;letter-spacing:.15em;
+  padding:3px 9px;border:1px solid var(--amber-line);
+  color:var(--amber);border-radius:2px;background:var(--amber-glow);
+}
+.sentiment-tag{
+  font-size:9px;letter-spacing:.1em;padding:3px 9px;
+  border-radius:2px;border:1px solid var(--rim2);color:var(--t3);
+}
+.sentiment-tag.bull{border-color:rgba(0,230,118,.4);color:var(--green);background:rgba(0,230,118,.08);}
+.sentiment-tag.bear{border-color:rgba(255,23,68,.4);color:var(--red);background:rgba(255,23,68,.08);}
+.sentiment-tag.neutral{border-color:var(--rim2);}
+
+.sector-signals{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+.sector-sig{
+  font-size:9px;padding:3px 8px;border-radius:2px;
+  border:1px solid var(--rim2);color:var(--t3);
+}
+.sector-sig.bull{border-color:rgba(0,230,118,.4);color:var(--green);background:rgba(0,230,118,.06);}
+.sector-sig.bear{border-color:rgba(255,23,68,.4);color:var(--red);background:rgba(255,23,68,.06);}
+
+.payload-label{font-size:9px;color:var(--t3);letter-spacing:.08em;margin-bottom:4px;}
+pre#payload{
+  font-family:var(--fm);font-size:10px;white-space:pre-wrap;
+  color:var(--t2);max-height:160px;overflow-y:auto;
+}
+pre#payload::-webkit-scrollbar{width:3px;}
+pre#payload::-webkit-scrollbar-thumb{background:var(--rim2);}
+
+/* ===== EMIT CONFIRM ===== */
+.emit-flash{
+  display:none;align-items:center;gap:8px;
+  padding:8px 12px;border-radius:3px;
+  border:1px solid rgba(0,230,118,.4);background:rgba(0,230,118,.07);
+  font-size:10px;color:var(--green);letter-spacing:.08em;
+  animation:fadein .25s ease;
+}
+.emit-flash.show{display:flex;}
+.emit-flash .pip{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);}
+
+/* ===== PUBLIC FEED VIEW (non-admin) ===== */
+#public-view{display:none;}
+.public-feed{padding:12px;}
+.bulletin-card{
+  padding:12px 14px;border-radius:4px;
+  border:1px solid var(--rim);background:rgba(255,255,255,.02);
+  margin-bottom:8px;animation:fadein .3s ease;
+}
+.bulletin-card .btime{font-size:9px;color:var(--t3);letter-spacing:.08em;margin-bottom:4px;}
+.bulletin-card .btxt{font-size:12px;color:var(--t1);line-height:1.5;margin-bottom:6px;}
+.bulletin-card .bmeta{display:flex;gap:8px;flex-wrap:wrap;}
+.bulletin-sentiment{font-size:9px;padding:2px 7px;border-radius:2px;}
+.bulletin-sector{font-size:9px;color:var(--t3);}
+.no-bulletins{font-size:11px;color:var(--t3);text-align:center;padding:40px 0;}
+
+/* ===== ADMIN GATE SCREEN ===== */
+#admin-controls{display:none;}
+
+/* ===== FEED EDITOR TEXTAREA ===== */
+#feedEditor{font-size:10px;color:var(--t2);height:200px;}
+
+/* ===== UTIL ===== */
+.muted{color:var(--t3);}
+.help{font-size:10px;color:var(--t3);letter-spacing:.04em;line-height:1.5;}
+.sep{height:1px;background:var(--rim);margin:8px 0;}
+</style>
+</head>
+<body>
+
+<!-- ===== NAV BAR ===== -->
+<div id="sxbz-nav" role="navigation">
+  <a class="snav-btn" href="StoxBallz_DailyFix_v2.html"><span class="snav-icon">⊞</span><span class="snav-label">Terminal</span></a>
+  <a class="snav-btn" href="StoxBallz_WorldMap.html"><span class="snav-icon">◉</span><span class="snav-label">World Map</span></a>
+  <a class="snav-btn" href="StoxBallz_DiGiWars.html"><span class="snav-icon">⚔</span><span class="snav-label">DiGiWars</span></a>
+  <button class="snav-btn snav-future">◈ DiGiBanx</button>
+  <a class="snav-btn" href="StoxBallz_WORD.html"><span class="snav-icon">◎</span><span class="snav-label">WORD</span></a>
+  <a class="snav-btn snav-active" href="StoxBallz_Newsmachine.html"><span class="snav-icon">📡</span><span class="snav-label">Space News</span></a>
+  <button class="snav-btn snav-future">◆ Museum</button>
+  <button class="snav-btn snav-future">◉ Manual</button>
+  <div class="snav-spacer"></div>
+  <div class="snav-badges">
+    <div class="snav-badge" id="snav-fix">Fix <span id="snav-fix-num">—</span></div>
+    <div class="snav-badge" id="snav-phase">Phase <span id="snav-phase-val">—</span></div>
+    <div class="snav-badge" id="snav-cash">◈ <span id="snav-cash-val">$10,000</span></div>
+  </div>
+</div>
+
+<!-- ===== TICKER ===== -->
+<div class="ticker-wrap">
+  <div id="ticker" class="ticker-inner"></div>
+</div>
+
+<!-- ===== PAGE HEADER ===== -->
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="masthead">
+      Space News Machine
+      <small>AREA181 // DISINFORMATION ENGINE // SDSF.US</small>
+      <div class="op-badge" id="op-badge">◈ OPERATOR: —</div>
+    </div>
+    <div class="hdr-controls" id="admin-hdr-controls" style="display:none;">
+      <button class="btn primary" id="demoBtn">Demo Mode</button>
+      <button class="btn ghost" id="liveBtn">Live Fetch</button>
+    </div>
+    <div style="margin-left:auto;" id="status-badge">
+      <div class="status-pill live"><div class="status-pip"></div>WIRE LIVE</div>
+    </div>
+  </div>
+
+  <!-- ===== PUBLIC VIEW (non-admin) ===== -->
+  <div id="public-view">
+    <div class="panel">
+      <div class="panel-hdr">
+        <span class="panel-title">📡 Live Bulletin Feed</span>
+        <span class="panel-sub">Dispatched signals only — source feeds restricted</span>
+      </div>
+      <div class="public-feed" id="publicFeed">
+        <div class="no-bulletins muted">No bulletins dispatched yet. Stand by for signal.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ADMIN CONTROLS ===== -->
+  <div id="admin-controls">
+    <div class="main-grid">
+
+      <!-- LEFT: Source Lanes -->
+      <div class="panel" id="admin-left">
+        <div class="panel-hdr">
+          <span class="panel-title">Source Lanes</span>
+          <span class="panel-sub">Operator Only</span>
+        </div>
+        <div class="panel-body">
+          <div class="help" style="margin-bottom:10px;">Pick up to 6 viewpoints. Use Demo Mode or Live Fetch (proxy required).</div>
+
+          <div class="lane-switch">
+            <div><b>Conservative</b><small class="muted"> Right-leaning U.S. outlets</small></div>
+            <div class="lane-toggle-wrap"><input type="checkbox" class="laneToggle" data-key="conservative" checked> ON</div>
+          </div>
+          <div class="lane-switch">
+            <div><b>Liberal / Progressive</b><small class="muted"> Left-leaning U.S. outlets</small></div>
+            <div class="lane-toggle-wrap"><input type="checkbox" class="laneToggle" data-key="liberal" checked> ON</div>
+          </div>
+          <div class="lane-switch">
+            <div><b>International</b><small class="muted"> Non-U.S. global coverage</small></div>
+            <div class="lane-toggle-wrap"><input type="checkbox" class="laneToggle" data-key="international" checked> ON</div>
+          </div>
+          <div class="lane-switch">
+            <div><b>Domestic (Wire)</b><small class="muted"> AP / NPR / major U.S. wires</small></div>
+            <div class="lane-toggle-wrap"><input type="checkbox" class="laneToggle" data-key="domestic" checked> ON</div>
+          </div>
+          <div class="lane-switch">
+            <div><b>Religious</b><small class="muted"> Faith-oriented outlets</small></div>
+            <div class="lane-toggle-wrap"><input type="checkbox" class="laneToggle" data-key="religious"> ON</div>
+          </div>
+          <div class="lane-switch">
+            <div><b>Fringe / Speculative</b><small class="muted"> Conspiracy-adjacent & fringe econ</small></div>
+            <div class="lane-toggle-wrap"><input type="checkbox" class="laneToggle" data-key="fringe"> ON</div>
+          </div>
+
+          <div class="sep"></div>
+          <details>
+            <summary class="help">Edit Feed URLs (advanced)</summary>
+            <div class="help" style="margin:6px 0 6px;">Live fetching requires a CORS proxy.</div>
+            <textarea id="feedEditor"></textarea>
+            <div class="btn-row" style="margin-top:6px;justify-content:flex-end;">
+              <button class="btn" id="resetFeeds">Reset</button>
+              <button class="btn primary" id="saveFeeds">Save</button>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <!-- CENTER: Incoming Headlines -->
+      <div class="panel">
+        <div class="panel-hdr">
+          <span class="panel-title">Incoming Headlines</span>
+          <span class="panel-sub">Click to load into lab</span>
+        </div>
+        <div class="feed-grid" id="feedGrid">
+          <!-- filled dynamically -->
+        </div>
+      </div>
+
+      <!-- RIGHT: Lab -->
+      <div class="panel">
+        <div class="panel-hdr">
+          <span class="panel-title">Space News Lab</span>
+          <span class="panel-sub">Transform → Emit → Market Signal</span>
+        </div>
+        <div class="lab-body">
+
+          <div class="lab-editor">
+            <div class="lab-field">
+              <label>Original Headline</label>
+              <textarea id="srcHeadline" rows="4" placeholder="Click a headline…"></textarea>
+              <div class="meta-row">
+                <input type="text" id="srcOutlet" placeholder="Outlet" />
+                <input type="text" id="srcLane" placeholder="Lane" />
+              </div>
+            </div>
+            <div class="lab-field">
+              <label>Space Bulletin (editable)</label>
+              <textarea id="spaceBulletin" rows="6" placeholder="Transformed copy appears here…"></textarea>
+            </div>
+          </div>
+
+          <div class="knobs-grid">
+            <div class="knob-item">
+              <label>Absurdity <span id="absurdityVal">0.35</span></label>
+              <input type="range" id="absurdity" min="0" max="1" step="0.01" value="0.35" />
+            </div>
+            <div class="knob-item">
+              <label>Tech Tone <span id="techVal">0.55</span></label>
+              <input type="range" id="tech" min="0" max="1" step="0.01" value="0.55" />
+            </div>
+            <div class="knob-item">
+              <label>Threat Level <span id="threatVal">0.40</span></label>
+              <input type="range" id="threat" min="0" max="1" step="0.01" value="0.40" />
+            </div>
+            <div class="knob-item">
+              <label>Market Relevance <span id="relVal">0.70</span></label>
+              <input type="range" id="relevance" min="0" max="1" step="0.01" value="0.70" />
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn primary" id="transformBtn">⚙ Transform</button>
+            <button class="btn" id="randomizeBtn">⟳ Shuffle</button>
+            <button class="btn emit" id="emitBtn">◈ Emit Signal</button>
+            <button class="btn ghost" id="copyBtn">Copy JSON</button>
+            <button class="btn ghost" id="clearBtn">Clear</button>
+          </div>
+
+          <div class="emit-flash" id="emitFlash">
+            <div class="pip"></div>
+            SIGNAL DISPATCHED → sxbz_world_v1.news_events
+          </div>
+
+          <div class="signal-out">
+            <div class="signal-out-hdr">
+              <div class="signal-tag">Market Signal</div>
+              <div class="sentiment-tag neutral" id="sentimentTag">neutral</div>
+            </div>
+            <div class="sector-signals" id="sectorSignals"></div>
+            <div class="payload-label">Payload preview (news_events entry)</div>
+            <pre id="payload"></pre>
+          </div>
+
+        </div><!-- /lab-body -->
+      </div><!-- /lab panel -->
+
+    </div><!-- /main-grid -->
+  </div><!-- /admin-controls -->
+
+</div><!-- /page-wrap -->
+
+<script>
+/* ============================================================
+   STOXBALLZ SPACE NEWS MACHINE
+   AREA181 // © MONKISM / SUPER DUPER SPACE FORCE
+   Operated by: GASMASTER B (admin only)
+   localStorage key: sxbz_world_v1
+   ============================================================ */
+
+/* --------- CONSTANTS --------- */
+const LS_KEY      = 'sxbz_world_v1';
+const PREFS_KEY   = 'word_prefs';
+const ADMIN_CALL  = 'GASMASTERB';
+
+/* --------- AUTH GATE --------- */
+function getCurrentCallsign() {
+  try {
+    const prefs = JSON.parse(localStorage.getItem(PREFS_KEY) || '{}');
+    return (prefs.callsign || '').toUpperCase().replace(/\s+/g,'');
+  } catch(e) { return ''; }
+}
+
+const CURRENT_USER = getCurrentCallsign();
+const IS_ADMIN     = (CURRENT_USER === ADMIN_CALL);
+
+/* Show operator badge */
+document.getElementById('op-badge').textContent =
+  '◈ OPERATOR: ' + (CURRENT_USER || '— GUEST');
+
+/* Show correct view */
+if (IS_ADMIN) {
+  document.getElementById('admin-controls').style.display = 'block';
+  document.getElementById('admin-hdr-controls').style.display = 'flex';
+} else {
+  document.getElementById('public-view').style.display = 'block';
+  renderPublicFeed();
+}
+
+/* --------- SHARED WORLD STATE --------- */
+function loadWorld() {
+  try {
+    return JSON.parse(localStorage.getItem(LS_KEY) || 'null') || defaultWorld();
+  } catch(e) { return defaultWorld(); }
+}
+function saveWorld(world) {
+  localStorage.setItem(LS_KEY, JSON.stringify(world));
+}
+function defaultWorld() {
+  return {
+    meta: { fix_number: 0, market_phase: 'Pre-Fix', last_updated: new Date().toISOString() },
+    stox: [],
+    digibanx: { cash_balance: 10000, portfolio: [], pending_events: [], transaction_history: [] },
+    word_signals: [],
+    news_events: []
+  };
+}
+
+/* Sync nav badges from world state */
+function syncNavBadges() {
+  const w = loadWorld();
+  document.getElementById('snav-fix-num').textContent  = w.meta?.fix_number ?? '—';
+  document.getElementById('snav-phase-val').textContent = w.meta?.market_phase ?? '—';
+  const cash = w.digibanx?.cash_balance;
+  document.getElementById('snav-cash-val').textContent =
+    cash != null ? '$' + Number(cash).toLocaleString() : '$10,000';
+}
+syncNavBadges();
+
+/* --------- FEED CONFIG --------- */
+const DEFAULT_FEEDS = {
+  conservative: {
+    label: 'Conservative', color: '#ffaa00',
+    outlets: [
+      { name: 'Fox News (US)',  url: 'https://feeds.foxnews.com/foxnews/latest' },
+      { name: 'WSJ (US)',       url: 'https://feeds.a.dj.com/rss/RSSWorldNews.xml' }
+    ]
+  },
+  liberal: {
+    label: 'Liberal / Progressive', color: '#00e5ff',
+    outlets: [
+      { name: 'NYTimes (US)',   url: 'https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml' },
+      { name: 'The Guardian',   url: 'https://www.theguardian.com/world/rss' }
+    ]
+  },
+  international: {
+    label: 'International', color: '#ffcc44',
+    outlets: [
+      { name: 'BBC World',      url: 'http://feeds.bbci.co.uk/news/world/rss.xml' },
+      { name: 'Reuters World',  url: 'https://feeds.reuters.com/reuters/worldNews' }
+    ]
+  },
+  domestic: {
+    label: 'Domestic (Wire)', color: '#00e676',
+    outlets: [
+      { name: 'AP Top',         url: 'https://www.apnews.com/apf-topnews?format=atom' },
+      { name: 'NPR Top',        url: 'https://feeds.npr.org/1001/rss.xml' }
+    ]
+  },
+  religious: {
+    label: 'Religious', color: '#8090b0',
+    outlets: [
+      { name: 'Religion News',  url: 'https://religionnews.com/feed/' },
+      { name: 'Catholic News',  url: 'https://www.catholicnewsagency.com/atom.xml' }
+    ]
+  },
+  fringe: {
+    label: 'Fringe / Speculative', color: '#ff1744',
+    outlets: [
+      { name: 'ZeroHedge',      url: 'https://feeds.feedburner.com/zerohedge/feed' },
+      { name: 'Fringe Wire',    url: 'https://substackapi.com/feed' }
+    ]
+  }
+};
+
+const SECTORS = [
+  { key:'quantum-mining',  label:'Quantum Mining'    },
+  { key:'warp-logistics',  label:'Warp Logistics'    },
+  { key:'ai-guilds',       label:'AI Guilds'         },
+  { key:'orbital-defense', label:'Orbital Defense'   },
+  { key:'terraforming',    label:'Terraforming'      },
+  { key:'space-tourism',   label:'Space Tourism'     },
+  { key:'bio-synth',       label:'Bio-Synth MedTech' },
+  { key:'agri-canibus9',   label:'Canibus-9 Agri'    }
+];
+
+const KEYMAP = [
+  { kws:['inflation','prices','interest rate','bond','treasury','yields'], sectors:['warp-logistics','quantum-mining'], bias:-1 },
+  { kws:['ai','artificial intelligence','chip','semiconductor','model'],   sectors:['ai-guilds','quantum-mining'],     bias:+1 },
+  { kws:['war','conflict','missile','strike','nuclear','sanction'],        sectors:['orbital-defense','warp-logistics'], bias:+1 },
+  { kws:['pandemic','vaccine','outbreak','health'],                        sectors:['bio-synth'],                      bias:+1 },
+  { kws:['oil','energy','gas','mining'],                                   sectors:['quantum-mining','warp-logistics'], bias:+1 },
+  { kws:['space','nasa','launch','rocket','satellite'],                    sectors:['space-tourism','orbital-defense'], bias:+1 },
+  { kws:['drought','crop','food','agri','hemp','cannabis'],                sectors:['agri-canibus9','terraforming'],   bias:+1 },
+  { kws:['climate','heat','storm','hurricane'],                            sectors:['terraforming','warp-logistics'],  bias:-1 }
+];
+
+let FEEDS = (() => { try { return JSON.parse(localStorage.getItem('spacewire:feeds') || 'null') || DEFAULT_FEEDS; } catch(e) { return DEFAULT_FEEDS; } })();
+
+/* --------- DEMO DATA --------- */
+const DEMO = {
+  conservative: [
+    { title:'Border funding fight returns to Congress as budget clock ticks',  outlet:'Demo/Right' },
+    { title:'Energy firms surge as drilling permits expand in Southwest',       outlet:'Demo/Right' }
+  ],
+  liberal: [
+    { title:'Major climate bill clears key committee after surprise compromise', outlet:'Demo/Left' },
+    { title:'Tech antitrust push gains traction with bipartisan amendments',    outlet:'Demo/Left'  }
+  ],
+  international: [
+    { title:'Central bank signals pause as currency stabilizes',               outlet:'Demo/Intl' },
+    { title:'Historic drought reshapes trade routes across two continents',     outlet:'Demo/Intl' }
+  ],
+  domestic: [
+    { title:'CDC tracks early wave of respiratory illness across states',       outlet:'Demo/Wire' },
+    { title:'Manufacturing index contracts for third straight month',           outlet:'Demo/Wire' }
+  ],
+  religious: [
+    { title:'Interfaith council launches humanitarian corridor to conflict zone', outlet:'Demo/Faith' },
+    { title:'Ethics board releases AI-use guidance for schools',                 outlet:'Demo/Faith' }
+  ],
+  fringe: [
+    { title:"Anonymous memo claims 'black budget' propulsion tests near desert site", outlet:'Demo/Fringe' },
+    { title:'Shadow market bets spike ahead of unscheduled press event',              outlet:'Demo/Fringe' }
+  ]
+};
+
+/* --------- UTILS --------- */
+const $ = sel => document.querySelector(sel);
+const $$ = sel => Array.from(document.querySelectorAll(sel));
+function escapeHtml(str='') {
+  return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+}
+function escapeReg(s) { return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+function enabledLanes() { return $$('.laneToggle').filter(x=>x.checked).map(x=>x.dataset.key); }
+function laneLabel(lane) {
+  return (FEEDS[lane]?.label || 'Source').replace(/\s+\/\s+.*/,'');
+}
+
+/* --------- TICKER --------- */
+function setTicker(items) {
+  const node = $('#ticker');
+  if (!items?.length) { node.innerHTML=''; return; }
+  const html = items.map(t =>
+    `<span class="ticker-pill"><span class="lane-tag">◈</span>${escapeHtml(t)}</span>`
+  ).join('');
+  node.innerHTML = html + html;
+}
+
+/* --------- PUBLIC FEED RENDERER (non-admin) --------- */
+function renderPublicFeed() {
+  const world = loadWorld();
+  const events = (world.news_events || []).slice().reverse();
+  const container = document.getElementById('publicFeed');
+  if (!container) return;
+  if (!events.length) {
+    container.innerHTML = '<div class="no-bulletins muted">No bulletins dispatched yet. Stand by for signal.</div>';
+    setTicker([]);
+    return;
+  }
+  container.innerHTML = events.map(ev => {
+    const sentClass = ev.sentiment==='bullish'?'bull':ev.sentiment==='bearish'?'bear':'neutral';
+    const sectors = (ev.sectors||[]).map(s=>`<span class="bulletin-sector">${s.label||s.key}</span>`).join('');
+    return `<div class="bulletin-card">
+      <div class="btime">${ev.dispatched_at ? new Date(ev.dispatched_at).toLocaleString() : '—'} // ${escapeHtml(ev.outlet||'—')}</div>
+      <div class="btxt">${escapeHtml(ev.bulletin||ev.headline||'')}</div>
+      <div class="bmeta">
+        <span class="bulletin-sentiment sentiment-tag ${sentClass}">${ev.sentiment||'neutral'}</span>
+        ${sectors}
+      </div>
+    </div>`;
+  }).join('');
+  setTicker(events.map(e => e.bulletin || e.headline).filter(Boolean).slice(0,20));
+}
+
+/* --------- FEED GRID --------- */
+function renderFeedGrid() {
+  const grid = $('#feedGrid');
+  if (!grid) return;
+  const on = enabledLanes();
+  const lanes = Object.entries(FEEDS).filter(([k]) => on.includes(k));
+  if (!lanes.length) { grid.innerHTML='<div style="padding:12px;font-size:10px;color:var(--t3);">Enable at least one lane.</div>'; return; }
+  const chunks = [[],[],[]];
+  lanes.forEach((ln,i) => chunks[i%3].push(ln));
+  grid.innerHTML = chunks.map(group => `<div class="feed-col">${
+    group.map(([key, lane]) =>
+      `<div class="feed-lane" data-key="${key}">
+        <div class="feed-lane-hdr" style="color:${lane.color}">${lane.label}</div>
+        <div class="headlines"></div>
+      </div>`
+    ).join('')
+  }</div>`).join('');
+}
+
+function headlineCard(title, outlet, lane) {
+  return `<div class="headline-card" data-title="${escapeHtml(title)}" data-outlet="${escapeHtml(outlet)}" data-lane="${lane}">
+    <b>${escapeHtml(title)}</b>
+    <small>${escapeHtml(outlet)}</small>
+  </div>`;
+}
+
+async function loadDemo() {
+  renderFeedGrid();
+  const lanes = enabledLanes();
+  const ticker = [];
+  lanes.forEach(k => {
+    const box = document.querySelector(`.feed-lane[data-key="${k}"] .headlines`);
+    if (!box) return;
+    box.innerHTML = (DEMO[k]||[]).map(h => headlineCard(h.title, h.outlet, k)).join('');
+    (DEMO[k]||[]).forEach(h => ticker.push(h.title));
+  });
+  setTicker(ticker.slice(0,20));
+}
+
+async function loadLive() {
+  renderFeedGrid();
+  const lanes = enabledLanes();
+  const ticker = [];
+  for (const k of lanes) {
+    const box = document.querySelector(`.feed-lane[data-key="${k}"] .headlines`);
+    const lane = FEEDS[k];
+    const items = [];
+    for (const o of lane.outlets) {
+      try {
+        const res = await fetch(`/api/news?url=${encodeURIComponent(o.url)}`);
+        if (!res.ok) throw new Error('fetch failed');
+        const data = await res.json();
+        (data.items||[]).slice(0,5).forEach(it => items.push({title: it.title||'Untitled', outlet:o.name}));
+      } catch(e) {
+        items.push({title:`[Offline] ${o.name}`, outlet:o.name});
+      }
+    }
+    ticker.push(...items.map(i=>i.title));
+    if (box) box.innerHTML = items.map(h=>headlineCard(h.title,h.outlet,k)).join('');
+  }
+  setTicker(ticker.slice(0,20));
+}
+
+/* --------- TRANSFORM ENGINE --------- */
+function normalize(s='') { return s.replace(/\s+/g,' ').trim(); }
+
+function swapTerms(s) {
+  const map = [
+    ['United States','Terran Union'],['U.S.','Terran Union'],['US ','Terran Union '],['America','Terran Union'],
+    ['China','Sino-Orbital Directorate'],['Russia','RusCosmo Collective'],['Europe','Old-World Sector'],
+    ['election','leadership conclave'],['president','High Steward'],['congress','Sector Council'],
+    ['interest rates','quantum yields'],['inflation','tachyon drift'],['economy','macro-cosmos'],
+    ['AI','sentient algorithms'],['chip','neuro-core'],['semiconductor','quantum wafer'],
+    ['oil','hydrocarbon nebulae'],['gas','propellant'],['supply chain','warp corridor'],
+    ['war','orbitfront conflict'],['missile','kinetic lance'],['sanction','trade dampener'],
+    ['pandemic','bio-wave'],['vaccine','bio-key'],
+    ['rocket','launch vehicle'],['satellite','orbital node'],['space station','habitat ring'],
+    ['climate','atmo-stability'],['storm','ion squall'],['drought','aqua scarcity']
+  ];
+  let out = s;
+  for (const [a,b] of map) {
+    out = out.replace(new RegExp(`\\b${escapeReg(a)}\\b`,'gi'), b);
+  }
+  return out;
+}
+
+function addFlavor(s, knobs, lane) {
+  const { absurdity, tech, threat, relevance } = knobs;
+  const tag = laneLabel(lane);
+  const intros  = ['Signal intercept:','Sensor ping:','Courier burst:','Relay echo:','Whisper-net brief:'];
+  const intro   = intros[Math.floor(absurdity * intros.length)] || 'Signal intercept:';
+  const techBits = ['per quantum-ledger readouts','per deep-space telemetry','per archivist beacons','per entangled audit trails','per long-range market arrays'];
+  const techline = tech > .5 ? ` ${techBits[Math.floor(tech*techBits.length)]}.` : '.';
+  const threatBits = ['Low disturbance to trade lanes expected.','Minor ripples across core corridors.','Elevated turbulence near key sectors.','High volatility across frontier markets.','Critical shockwave imminent for exposed firms.'];
+  const threatline = ` ${threatBits[Math.min(4, Math.floor(threat*5))]}`;
+  const rel = relevance > .6 ? 'Immediate' : (relevance > .3 ? 'Near-term' : 'Background');
+  return `${intro} [${tag}] ${s}${techline}${threatline} ${rel} relevance to macro-cosmos flows.`;
+}
+
+function tidy(s) { return /[.!?]["']?$/.test(s) ? s : s + '.'; }
+
+function toSpaceNews(src, lane, knobs) {
+  return tidy(addFlavor(swapTerms(normalize(src)), knobs, lane));
+}
+
+/* --------- SIGNAL INFERENCE --------- */
+function inferSignals(text, knobs) {
+  const t = text.toLowerCase();
+  const sectors = new Map();
+  let biasTotal = 0;
+  for (const rule of KEYMAP) {
+    if (rule.kws.some(k => t.includes(k))) {
+      rule.sectors.forEach(s => { sectors.set(s, (sectors.get(s)||0) + (rule.bias >= 0 ? 1 : -1)); });
+      biasTotal += rule.bias;
+    }
+  }
+  biasTotal += (knobs.threat - 0.5) * 2;
+  biasTotal -= (knobs.tech   - 0.5) * 1;
+  const sentiment = biasTotal > .4 ? 'bullish' : (biasTotal < -.4 ? 'bearish' : 'neutral');
+  let out = Array.from(sectors.entries()).map(([key, val]) => ({
+    key, label: SECTORS.find(s=>s.key===key)?.label || key, impact: Math.max(-2, Math.min(2, val))
+  }));
+  if (!out.length) out.push({ key:'warp-logistics', label:'Warp Logistics', impact:0 });
+  return { sentiment, sectors: out };
+}
+
+/* --------- EMIT TO sxbz_world_v1 --------- */
+function emitToWorld(payload) {
+  const world = loadWorld();
+  if (!Array.isArray(world.news_events)) world.news_events = [];
+
+  const entry = {
+    ...payload,
+    dispatched_at: new Date().toISOString(),
+    dispatched_by: CURRENT_USER,
+    // Blockchain metadata slots (ready for later)
+    meta: { wallet: '', chain: '', token_id: '' }
+  };
+
+  world.news_events.push(entry);
+  world.meta.last_updated = new Date().toISOString();
+  saveWorld(world);
+
+  // Also fire window event for any listening games
+  window.dispatchEvent(new CustomEvent('spaceNews:bulletin', { detail: entry }));
+}
+
+/* --------- UI RENDERS --------- */
+function collectKnobs() {
+  return {
+    absurdity: Number($('#absurdity').value),
+    tech:      Number($('#tech').value),
+    threat:    Number($('#threat').value),
+    relevance: Number($('#relevance').value)
+  };
+}
+function setKnobLabels() {
+  ['absurdity','tech','threat','relevance'].forEach(id => {
+    const el = document.getElementById(id+'Val');
+    if (el) el.textContent = document.getElementById(id).value;
+  });
+}
+function renderSignalsView(sig) {
+  const tag = $('#sentimentTag');
+  if (!tag) return;
+  tag.className = 'sentiment-tag ' + (sig.sentiment==='bullish'?'bull':sig.sentiment==='bearish'?'bear':'neutral');
+  tag.textContent = sig.sentiment;
+  const wrap = $('#sectorSignals');
+  if (!wrap) return;
+  wrap.innerHTML = sig.sectors.map(s => {
+    const cls = s.impact>0?'bull':(s.impact<0?'bear':'neutral');
+    const sign = s.impact>0?'+':'';
+    return `<span class="sector-sig ${cls}" title="impact ${s.impact}">${s.label} ${sign}${s.impact}</span>`;
+  }).join('');
+}
+function fillPayloadView(payload) {
+  const el = $('#payload');
+  if (el) el.textContent = JSON.stringify(payload, null, 2);
+}
+function hydrateFeedEditor() {
+  const el = $('#feedEditor');
+  if (el) el.value = JSON.stringify(FEEDS, null, 2);
+}
+
+/* --------- EMIT FLASH --------- */
+function showEmitFlash() {
+  const el = document.getElementById('emitFlash');
+  if (!el) return;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+/* --------- INIT (ADMIN ONLY) --------- */
+if (IS_ADMIN) {
+  renderFeedGrid();
+  hydrateFeedEditor();
+  setKnobLabels();
+
+  $$('.laneToggle').forEach(el => el.addEventListener('change', renderFeedGrid));
+
+  $('#feedGrid').addEventListener('click', e => {
+    const card = e.target.closest('.headline-card');
+    if (!card) return;
+    $('#srcHeadline').value = card.dataset.title || '';
+    $('#srcOutlet').value   = card.dataset.outlet || '';
+    $('#srcLane').value     = FEEDS[card.dataset.lane]?.label || card.dataset.lane || '';
+    $('#spaceBulletin').value = '';
+  });
+
+  ['absurdity','tech','threat','relevance'].forEach(id =>
+    document.getElementById(id).addEventListener('input', setKnobLabels)
+  );
+
+  $('#demoBtn').addEventListener('click', loadDemo);
+  $('#liveBtn').addEventListener('click', loadLive);
+
+  $('#resetFeeds').addEventListener('click', () => { FEEDS = DEFAULT_FEEDS; hydrateFeedEditor(); });
+  $('#saveFeeds').addEventListener('click', () => {
+    try {
+      FEEDS = JSON.parse($('#feedEditor').value);
+      localStorage.setItem('spacewire:feeds', JSON.stringify(FEEDS));
+      renderFeedGrid();
+    } catch(e) { alert('Invalid JSON.'); }
+  });
+
+  $('#transformBtn').addEventListener('click', () => {
+    const src = $('#srcHeadline').value.trim();
+    if (!src) { alert('Pick a headline first.'); return; }
+    const lane = Object.keys(FEEDS).find(k => FEEDS[k].label === $('#srcLane').value.trim()) || 'domestic';
+    const knobs = collectKnobs();
+    const bulletin = toSpaceNews(src, lane, knobs);
+    $('#spaceBulletin').value = bulletin;
+    const sig = inferSignals(src + ' ' + bulletin, knobs);
+    renderSignalsView(sig);
+    const payload = {
+      headline: src,
+      outlet: $('#srcOutlet').value.trim(),
+      lane,
+      laneLabel: FEEDS[lane]?.label || lane,
+      bulletin,
+      sentiment: sig.sentiment,
+      sectors: sig.sectors,
+      knobs
+    };
+    fillPayloadView(payload);
+  });
+
+  $('#randomizeBtn').addEventListener('click', () => {
+    const rnd = () => (Math.random()*0.8+0.1).toFixed(2);
+    ['absurdity','tech','threat','relevance'].forEach(id => document.getElementById(id).value = rnd());
+    setKnobLabels();
+  });
+
+  $('#emitBtn').addEventListener('click', () => {
+    const json = $('#payload').textContent.trim();
+    if (!json) { alert('Transform a headline first.'); return; }
+    const payload = JSON.parse(json);
+    emitToWorld(payload);
+    showEmitFlash();
+    syncNavBadges();
+  });
+
+  $('#copyBtn').addEventListener('click', () => {
+    const txt = $('#payload').textContent;
+    if (!txt) { alert('Nothing to copy yet.'); return; }
+    navigator.clipboard.writeText(txt);
+  });
+
+  $('#clearBtn').addEventListener('click', () => {
+    ['srcHeadline','srcOutlet','srcLane','spaceBulletin'].forEach(id => { const el = document.getElementById(id); if (el) el.value=''; });
+    const el = document.getElementById('payload'); if (el) el.textContent='';
+    renderSignalsView({ sentiment:'neutral', sectors:[] });
+  });
+
+  loadDemo();
+}
+
+/* --------- TICKER ALWAYS ON (pull from world for all users) --------- */
+(function initTicker() {
+  const world = loadWorld();
+  const events = world.news_events || [];
+  if (events.length) {
+    setTicker(events.map(e => e.bulletin || e.headline).filter(Boolean).slice(-20));
+  }
+})();
+
+/* --------- STORAGE LISTENER (updates public feed live) --------- */
+window.addEventListener('storage', e => {
+  if (e.key === LS_KEY) {
+    if (!IS_ADMIN) renderPublicFeed();
+    syncNavBadges();
+    const world = loadWorld();
+    const events = world.news_events || [];
+    if (events.length) {
+      setTicker(events.map(ev => ev.bulletin || ev.headline).filter(Boolean).slice(-20));
+    }
+  }
+});
+</script>
+</body>
+</html>
