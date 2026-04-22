@@ -50,11 +50,15 @@ body > .pager-root, #appRoot{margin-top:34px;height:calc(100vh - 34px)!important
 }
 .snav-btn:hover{color:#ffaa00;background:rgba(255,170,0,0.05);}
 .snav-btn.snav-active{color:#ffaa00;border-bottom:2px solid #ffaa00;}
-.snav-btn.snav-future{color:#1e2a3e;cursor:default;}
+.snav-btn.snav-future{color:#1e2a3e;cursor:default;pointer-events:none;}
 .snav-btn.snav-future:hover{color:#1e2a3e;background:transparent;}
 .snav-icon{font-size:12px;}
+.snav-label{font-size:11px;}
 .snav-spacer{flex:1;}
 .snav-pip{width:5px;height:5px;border-radius:50%;background:#ffaa00;box-shadow:0 0 6px #ffaa00;margin-left:4px;}
+.snav-badges{display:flex;align-items:stretch;}
+.snav-badge{display:flex;align-items:center;gap:5px;padding:0 12px;height:100%;border-left:1px solid #111820;font-size:9px;color:#2a3a50;letter-spacing:.1em;font-family:'Share Tech Mono',monospace;}
+.snav-badge span{color:#ffaa00;font-size:10px;}
 
 /* ── ANIMATIONS ─────────────────────────────────── */
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.3;transform:scale(0.6)}}
@@ -346,17 +350,34 @@ body > .pager-root, #appRoot{margin-top:34px;height:calc(100vh - 34px)!important
 .dir-add-row input{flex:1;background:var(--surface);border:1px solid var(--border2);color:var(--text);font-family:'Share Tech Mono',monospace;font-size:16px;padding:5px 8px;outline:none;border-radius:1px;text-transform:uppercase;letter-spacing:1px;}
 .dir-add-row input:focus{border-color:var(--green);}
 .dir-add-row input::placeholder{text-transform:none;color:var(--text-ghost);}
+
+/* IMAGE ATTACHMENT */
+.img-attach-btn{background:transparent;border:1px solid var(--border);color:var(--text-ghost);font-family:'Share Tech Mono',monospace;font-size:14px;letter-spacing:1px;padding:4px 10px;cursor:pointer;border-radius:1px;transition:all 0.12s;}
+.img-attach-btn:hover{border-color:var(--border2);color:var(--amber);}
+.img-attach-btn.has-img{border-color:rgba(255,179,0,0.4);color:var(--amber);background:rgba(255,179,0,0.06);}
+.img-preview-wrap{margin-top:6px;position:relative;display:inline-block;}
+.img-preview-wrap img{max-width:100%;max-height:120px;border:1px solid var(--border2);border-radius:1px;display:block;}
+.img-preview-remove{position:absolute;top:3px;right:3px;background:rgba(0,0,0,0.7);border:1px solid rgba(255,61,61,0.5);color:var(--red);font-size:12px;padding:1px 5px;cursor:pointer;border-radius:1px;line-height:1.4;}
+.post-img{margin:7px 0 4px;max-width:100%;max-height:200px;border:1px solid var(--border);border-radius:1px;display:block;cursor:pointer;}
+#imgFileInput{display:none;}
 </style>
 
 
-<div id="sxbz-nav">
-  <a class="snav-btn" href="StoxBallz_DailyFix_v2.html"><span class="snav-icon">⊞</span>Terminal</a>
-  <a class="snav-btn" href="StoxBallz_WorldMap.html"><span class="snav-icon">◉</span>World Map</a>
-  <a class="snav-btn" href="StoxBallz_DiGiWars.html"><span class="snav-icon">⚔</span>DiGiWars</a>
+<div id="sxbz-nav" role="navigation">
+  <a class="snav-btn" href="StoxBallz_DailyFix_v2.html"><span class="snav-icon">⊞</span><span class="snav-label">Terminal</span></a>
+  <a class="snav-btn" href="StoxBallz_WorldMap.html"><span class="snav-icon">◉</span><span class="snav-label">World Map</span></a>
+  <a class="snav-btn" href="StoxBallz_DiGiWars.html"><span class="snav-icon">⚔</span><span class="snav-label">DiGiWars</span></a>
   <button class="snav-btn snav-future">◈ DiGiBanx</button>
-  <button class="snav-btn snav-active"><span class="snav-icon">◎</span>W.O.R.D.<span class="snav-pip"></span></button>
+  <a class="snav-btn snav-active" href="StoxBallz_WORD.html"><span class="snav-icon">◎</span><span class="snav-label">W.O.R.D.</span><span class="snav-pip"></span></a>
+  <a class="snav-btn" href="StoxBallz_Newsmachine.html"><span class="snav-icon">📡</span><span class="snav-label">Space News</span></a>
   <button class="snav-btn snav-future">◆ Museum</button>
+  <button class="snav-btn snav-future">◉ Manual</button>
   <div class="snav-spacer"></div>
+  <div class="snav-badges">
+    <div class="snav-badge" id="snav-fix">Fix <span id="snav-fix-num">—</span></div>
+    <div class="snav-badge" id="snav-phase">Phase <span id="snav-phase-val">—</span></div>
+    <div class="snav-badge" id="snav-cash">◈ <span id="snav-cash-val">$10,000</span></div>
+  </div>
 </div>
 
 <!-- ══════════════════════════════════════════
@@ -436,6 +457,13 @@ body > .pager-root, #appRoot{margin-top:34px;height:calc(100vh - 34px)!important
       <textarea class="composer-ta" id="composerText" placeholder="// drop the W.O.R.D. — 142 chars max..." maxlength="142" oninput="onInput()"></textarea>
       <div style="display:flex;align-items:center;gap:6px;margin-top:5px;">
         <button class="c-btn" id="routeToggle" onclick="toggleRoute()">⊕ ROUTE</button>
+        <button class="img-attach-btn" id="imgAttachBtn" onclick="document.getElementById('imgFileInput').click()" title="Attach one image (lives in thread only)">📎 IMG</button>
+        <span id="imgAttachName" style="font-size:12px;color:var(--amber);letter-spacing:1px;"></span>
+      </div>
+      <input type="file" id="imgFileInput" accept="image/*">
+      <div id="imgPreviewWrap" class="img-preview-wrap" style="display:none;">
+        <img id="imgPreviewImg" src="" alt="attachment preview">
+        <button class="img-preview-remove" onclick="clearImg()">✕</button>
       </div>
       <div class="composer-row">
         <span class="char-count" id="charCount">142 / 142</span>
@@ -660,6 +688,7 @@ const TICKERS    = [
   {sym:'OP', val:'2.31',chg:'+3.2%',up:true}
 ];
 const STATUS_COLORS = {ACTIVE:'#00ff78',STANDBY:'#ffb300',DARK:'#3a4a64'};
+const ADMINS = ['NOMO','GASMASTERB'];
 
 // ── Local state ────────────────────────────────────
 let CURRENT_USER  = null;
@@ -669,17 +698,38 @@ let feedFilter    = 'ALL';
 let routeOpen     = false;
 let selFilters    = [];
 let selRecipients = [];
-let privFromDir   = [];   // selected from directory in priv modal
-let privManual    = [];   // manually typed callsigns
+let privFromDir   = [];
+let privManual    = [];
 let allPosts      = {};
 let allAlerts     = [];
 let onlineUsers   = {};
 let currentScreen = 'board';
 let soundOn       = true;
 let userStatus    = 'ACTIVE';
-let myDir         = [];   // personal directory, max 42
-let favs          = [];   // favorited callsigns
+let myDir         = [];
+let favs          = [];
 let lastPostCount = 0;
+let pendingImgB64 = null;  // base64 image attached to next post
+
+// ── LOAD LOCAL PREFS IMMEDIATELY (before Firebase auth fires) ──
+// This is critical: CURRENT_USER must be set before onAuthStateChanged
+// so that existing anonymous sessions boot the app without re-login.
+(function earlyLoadLocal(){
+  try{
+    const r = JSON.parse(localStorage.getItem('word_prefs') || '{}');
+    if(r.callsign) CURRENT_USER = r.callsign;
+    if(r.status)   userStatus   = r.status;
+    if(r.sound !== undefined) soundOn = r.sound;
+    if(r.dir)      myDir        = r.dir;
+    if(r.favs)     favs         = r.favs;
+    // Pre-fill login field if returning user
+    if(r.callsign){
+      const inp = document.getElementById('loginCallsign');
+      if(inp) inp.value = r.callsign;
+      setLoginStatus('// welcome back, '+r.callsign, 'ok');
+    }
+  }catch(e){}
+})();
 
 // ── Persist local prefs ────────────────────────────
 function saveLocal(){
@@ -751,26 +801,24 @@ setInterval(updateClock,1000);updateClock();
 })();
 
 // ── LOGIN ──────────────────────────────────────────
-// Pre-fill saved callsign
-(function(){
-  const prefs = loadLocal();
-  if(prefs.callsign){
-    document.getElementById('loginCallsign').value = prefs.callsign;
-    setLoginStatus('// welcome back, '+prefs.callsign,'ok');
-  }
-})();
 
 window.doLogin = function(){
-  const raw = document.getElementById('loginCallsign').value.trim().toUpperCase();
+  const raw = document.getElementById('loginCallsign').value.trim().toUpperCase().replace(/\s+/g,'');
   if(!raw){ setLoginStatus('// enter a callsign first','err'); return; }
-  if(raw.length < 2){ setLoginStatus('// callsign too short','err'); return; }
+  if(raw.length < 2){ setLoginStatus('// callsign too short (2+ chars)','err'); return; }
   CURRENT_USER = raw;
   window.CURRENT_USER = raw;
   setLoginStatus('// authenticating...','');
-  signInAnonymously(auth).catch(err=>{
-    CURRENT_USER=null;
-    setLoginStatus('// auth failed: '+err.code,'err');
-  });
+  // If already signed in anonymously, just boot directly
+  if(auth.currentUser){
+    saveLocal();
+    bootApp();
+  } else {
+    signInAnonymously(auth).catch(err=>{
+      CURRENT_USER=null;
+      setLoginStatus('// auth failed: '+err.code,'err');
+    });
+  }
 };
 
 function setLoginStatus(msg,cls){
@@ -783,28 +831,49 @@ function setLoginStatus(msg,cls){
 onAuthStateChanged(auth, user=>{
   if(!user){ setFbStatus('','OFFLINE'); return; }
   myAuthUID = user.uid;
-  if(!CURRENT_USER){ setFbStatus('err','NO CALLSIGN'); return; }
-
-  // Presence
-  myPresRef = child(presRef, encodeURIComponent(CURRENT_USER));
-  set(myPresRef,{callsign:CURRENT_USER,status:userStatus,ts:Date.now()});
-  onDisconnect(myPresRef).remove();
-
-  setFbStatus('live','LIVE');
-  bootApp();
+  // If we have a callsign (either just typed or loaded from prefs), boot the app
+  if(CURRENT_USER){
+    saveLocal();
+    setFbStatus('live','LIVE');
+    bootApp();
+  } else {
+    // Existing Firebase session but no callsign stored — stay on login screen
+    setFbStatus('','WAITING');
+    setLoginStatus('// connected — enter your callsign','ok');
+  }
 });
 
 // ── BOOT APP ───────────────────────────────────────
 function bootApp(){
+  // Set up presence now that we have a confirmed callsign
+  myPresRef = child(presRef, encodeURIComponent(CURRENT_USER));
+  set(myPresRef,{callsign:CURRENT_USER,status:userStatus,ts:Date.now()});
+  onDisconnect(myPresRef).remove();
+
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('appRoot').style.display='flex';
   updateIdentityUI();
-  // Hide reset button for non-admins
+
+  // Admin gate: NoMo and GasMasterB both get reset button
   const resetBtn = document.querySelector('.topbar-btn.red');
-  if(resetBtn) resetBtn.style.display = CURRENT_USER === 'NOMO' ? '' : 'none';
+  if(resetBtn) resetBtn.style.display = ADMINS.includes(CURRENT_USER) ? '' : 'none';
+
+  // Sync AREA181 nav badges from world state
+  try{
+    const w = JSON.parse(localStorage.getItem('sxbz_world_v1')||'{}');
+    const fixEl = document.getElementById('snav-fix-num');
+    const phEl  = document.getElementById('snav-phase-val');
+    const cashEl= document.getElementById('snav-cash-val');
+    if(fixEl && w.meta?.fix_number != null)  fixEl.textContent  = w.meta.fix_number;
+    if(phEl  && w.meta?.market_phase)        phEl.textContent   = w.meta.market_phase;
+    if(cashEl && w.digibanx?.cash_balance != null)
+      cashEl.textContent = '$'+Number(w.digibanx.cash_balance).toLocaleString();
+  }catch(e){}
+
   subscribeToData();
   renderAll();
   updateSoundBtn();
+  setupImgInput();
 }
 
 function updateIdentityUI(){
@@ -858,8 +927,14 @@ async function writeAlert(type,text){
 // ── LOGOUT ─────────────────────────────────────────
 window.doLogout = function(){
   if(myPresRef) remove(myPresRef);
+  myPresRef = null;
+  CURRENT_USER = null;
+  window.CURRENT_USER = null;
+  pendingImgB64 = null;
+  clearImg();
   document.getElementById('appRoot').style.display='none';
   document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('loginCallsign').value='';
   setLoginStatus('// signed out. enter callsign to return.','ok');
 };
 
@@ -879,6 +954,45 @@ window.setSoundPref = function(v){
 function updateSoundBtn(){
   document.getElementById('soundBtn').textContent = soundOn ? '🔔' : '🔕';
 }
+
+// ── IMAGE ATTACHMENT ───────────────────────────────
+function setupImgInput(){
+  const input = document.getElementById('imgFileInput');
+  if(!input || input._wired) return;
+  input._wired = true;
+  input.addEventListener('change', ()=>{
+    const file = input.files[0];
+    if(!file) return;
+    // Limit to ~400KB base64 (keeps Firebase happy and post readable)
+    if(file.size > 400000){
+      alert('// Image too large — keep it under ~300KB');
+      input.value='';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = e => {
+      pendingImgB64 = e.target.result;
+      document.getElementById('imgPreviewImg').src = pendingImgB64;
+      document.getElementById('imgPreviewWrap').style.display = 'inline-block';
+      document.getElementById('imgAttachBtn').classList.add('has-img');
+      document.getElementById('imgAttachName').textContent = file.name.slice(0,22);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+window.clearImg = function(){
+  pendingImgB64 = null;
+  const input = document.getElementById('imgFileInput');
+  if(input) input.value='';
+  const wrap = document.getElementById('imgPreviewWrap');
+  if(wrap) wrap.style.display='none';
+  const btn = document.getElementById('imgAttachBtn');
+  if(btn) btn.classList.remove('has-img');
+  const lbl = document.getElementById('imgAttachName');
+  if(lbl) lbl.textContent='';
+  const prev = document.getElementById('imgPreviewImg');
+  if(prev) prev.src='';
+};
 
 // ── SETTINGS ───────────────────────────────────────
 window.openSettings = function(){
@@ -1028,6 +1142,7 @@ window.clearComposer = function(){
   selFilters=[];selRecipients=[];routeOpen=false;
   document.getElementById('routePanel').classList.remove('open');
   document.getElementById('routeToggle').classList.remove('active');
+  clearImg();
   updateCharCount();
 };
 
@@ -1115,6 +1230,8 @@ window.submitWord = async function(isPriv){
     reactions: {Props:0,'Hell Nah':0,FrFr:0},
     quickReplies: {},
     seenBy: {[CURRENT_USER]:true},
+    // Image attachment (base64, thread-session only — not persisted beyond Firebase RT)
+    img: pendingImgB64 || null,
     // Blockchain-ready metadata slot
     meta: { wallet: '', chain: '', token_id: '' }
   };
@@ -1212,6 +1329,7 @@ function renderBoard(){
         ${p.filters&&p.filters.length?`<span class="post-badge badge-route">${p.filters.join(' · ')}</span>`:''}
       </div>
       <div class="post-text">${esc(p.text)}</div>
+      ${p.img ? `<img class="post-img" src="${p.img}" alt="attachment" onclick="this.style.maxHeight=this.style.maxHeight==='none'?'200px':'none'" title="Click to expand">` : ''}
       ${recList.length?`<div style="font-size:14px;color:var(--text-ghost);margin-bottom:6px;letter-spacing:1px">→ ${recList.join(', ')}</div>`:''}
       <div class="qr-row">
         ${QRS.map(v=>`<button class="qr-btn" onclick="quickReply('${k}','${v}')">${v}</button>`).join('')}
@@ -1317,7 +1435,7 @@ setInterval(()=>{ if(currentScreen==='board') renderBoard(); },15000);
 
 // ── RESET ──────────────────────────────────────────
 window.confirmReset = function(){
-  if(CURRENT_USER !== 'NOMO'){
+  if(!ADMINS.includes(CURRENT_USER)){
     alert('// RESET RESTRICTED — ADMIN ONLY');
     return;
   }
