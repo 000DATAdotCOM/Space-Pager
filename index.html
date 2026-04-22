@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AREA181 // SDSF.US</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;background:#03040a;color:#ffaa00;font-family:'Share Tech Mono',monospace;overflow:hidden;}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.022) 3px,rgba(0,0,0,0.022) 4px);pointer-events:none;z-index:9999;}
+#stars{position:fixed;inset:0;z-index:0;overflow:hidden;}
+.star{position:absolute;border-radius:50%;background:#fff;animation:twinkle var(--dur) ease-in-out infinite;animation-delay:var(--delay);}
+@keyframes twinkle{0%,100%{opacity:var(--lo)}50%{opacity:var(--hi)}}
+.shell{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;padding:20px;}
+.logo-block{text-align:center;margin-bottom:30px;}
+.logo{font-family:'Orbitron',sans-serif;font-size:clamp(2rem,8vw,4.5rem);font-weight:900;color:#ffaa00;letter-spacing:.22em;text-shadow:0 0 30px rgba(255,170,0,0.5),0 0 80px rgba(255,170,0,0.2),0 0 140px rgba(255,170,0,0.08);animation:pulse-logo 3s ease-in-out infinite;line-height:1;}
+.logo-rule{width:100%;height:1px;background:linear-gradient(90deg,transparent,rgba(255,170,0,0.4),transparent);margin:12px 0;}
+.logo-sub{font-family:'Rajdhani',sans-serif;font-size:clamp(.55rem,1.5vw,.75rem);letter-spacing:.3em;color:#2a3a54;text-transform:uppercase;}
+@keyframes pulse-logo{0%,100%{opacity:1;text-shadow:0 0 30px rgba(255,170,0,0.5),0 0 80px rgba(255,170,0,0.2)}50%{opacity:0.85;text-shadow:0 0 50px rgba(255,170,0,0.7),0 0 100px rgba(255,170,0,0.3)}}
+.game-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:660px;margin-bottom:26px;}
+@media(max-width:500px){.game-grid{grid-template-columns:1fr 1fr;}}
+.game-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:14px 8px;border:1px solid #1a2236;background:rgba(255,255,255,0.015);color:#3a4a64;font-family:'Share Tech Mono',monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;text-decoration:none;cursor:pointer;transition:all 0.18s;border-radius:2px;}
+.game-btn:hover{border-color:rgba(255,170,0,0.3);color:#ffaa00;background:rgba(255,170,0,0.06);box-shadow:0 0 18px rgba(255,170,0,0.08);}
+.game-btn.future{color:#111820;cursor:default;pointer-events:none;}
+.game-icon{font-size:1rem;margin-bottom:2px;}
+.enter-btn{font-family:'Orbitron',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.25em;text-transform:uppercase;padding:14px 48px;border:1px solid rgba(255,170,0,0.35);background:rgba(255,170,0,0.07);color:#ffaa00;cursor:pointer;border-radius:2px;transition:all 0.2s;position:relative;overflow:hidden;margin-bottom:18px;}
+.enter-btn::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,170,0,0.12),transparent);transform:translateX(-100%);transition:transform 0.4s;}
+.enter-btn:hover{background:rgba(255,170,0,0.14);box-shadow:0 0 32px rgba(255,170,0,0.2);}
+.enter-btn:hover::after{transform:translateX(100%);}
+.music-bar{display:flex;align-items:center;gap:12px;}
+.music-toggle{display:flex;align-items:center;gap:7px;padding:5px 13px;border:1px solid #1a2236;background:transparent;color:#1a2236;font-family:'Share Tech Mono',monospace;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:2px;transition:all 0.15s;}
+.music-toggle:hover{border-color:rgba(255,170,0,0.2);color:#2a3a54;}
+.music-toggle.playing{border-color:rgba(255,170,0,0.3);color:#ffaa00;background:rgba(255,170,0,0.05);}
+.music-pip{width:5px;height:5px;border-radius:50%;background:#1a2236;flex-shrink:0;transition:background 0.2s;}
+.music-toggle.playing .music-pip{background:#ffaa00;box-shadow:0 0 6px #ffaa00;animation:pip-pulse 1.4s ease-in-out infinite;}
+@keyframes pip-pulse{0%,100%{opacity:1}50%{opacity:0.25}}
+.vol-wrap{display:flex;align-items:center;gap:6px;color:#1a2236;font-size:.55rem;letter-spacing:.1em;}
+input[type=range]#volSlider{-webkit-appearance:none;width:68px;height:2px;background:#1a2236;border-radius:1px;cursor:pointer;outline:none;}
+input[type=range]#volSlider::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;border-radius:50%;background:#ffaa00;box-shadow:0 0 6px rgba(255,170,0,0.5);cursor:pointer;}
+.credits{position:fixed;bottom:10px;left:0;right:0;text-align:center;font-size:.48rem;letter-spacing:.16em;color:#0d1520;z-index:1;}
+</style>
+</head>
+<body>
+
+<div id="stars"></div>
+
+<!-- Audio: relative path — drop area181_theme.mp3 in the same repo directory -->
+<audio id="bgMusic" loop preload="auto">
+  <source src="area181_theme.mp3" type="audio/mpeg">
+</audio>
+
+<div class="shell">
+
+  <div class="logo-block">
+    <div class="logo">AREA181</div>
+    <div class="logo-rule"></div>
+    <div class="logo-sub">Super Duper Space Force &nbsp;//&nbsp; SDSF.US &nbsp;//&nbsp; © Monkism</div>
+  </div>
+
+  <div class="game-grid">
+    <a class="game-btn" href="StoxBallz_DailyFix_v2.html"><span class="game-icon">⊞</span>Terminal</a>
+    <a class="game-btn" href="StoxBallz_WorldMap.html"><span class="game-icon">◉</span>World Map</a>
+    <a class="game-btn" href="StoxBallz_DiGiWars.html"><span class="game-icon">⚔</span>DiGiWars</a>
+    <a class="game-btn" href="StoxBallz_WORD.html"><span class="game-icon">◎</span>W.O.R.D.</a>
+    <a class="game-btn" href="StoxBallz_Newsmachine.html"><span class="game-icon">📡</span>Space News</a>
+    <span class="game-btn future"><span class="game-icon">◈</span>DiGiBanx</span>
+  </div>
+
+  <button class="enter-btn" id="enterBtn" onclick="enterUniverse()">
+    ◆ ENTER AREA181 ◆
+  </button>
+
+  <div class="music-bar">
+    <button class="music-toggle" id="musicToggle" onclick="toggleMusic()">
+      <span class="music-pip"></span>
+      <span id="musicLabel">MUSIC OFF</span>
+    </button>
+    <div class="vol-wrap">
+      VOL&nbsp;
+      <input type="range" id="volSlider" min="0" max="1" step="0.05" value="0.35"
+             oninput="setVolume(this.value)">
+    </div>
+  </div>
+
+</div>
+
+<div class="credits">
+  AREA181 // STOXBALLZ UNIVERSE // FIRST GAME COMPLETED 2026 — SIX YEARS IN THE MAKING
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   AREA181 SHELL — Background Music Controller
+   ───────────────────────────────────────────────────
+   Audio file : area181_theme.mp3  (same directory)
+   LS key     : area181_prefs
+   ───────────────────────────────────────────────────
+   BROWSER AUDIO POLICY
+   Autoplay is blocked until a user gesture fires.
+   We unlock on first click (toggle OR enter button),
+   then immediately apply the saved preference so
+   returning visitors who had music ON get it back
+   the moment they click anything.
+   ═══════════════════════════════════════════════════ */
+
+const LS_KEY = 'area181_prefs';
+const audio  = document.getElementById('bgMusic');
+const toggle = document.getElementById('musicToggle');
+const label  = document.getElementById('musicLabel');
+const slider = document.getElementById('volSlider');
+
+let musicOn    = false;   // live playback state
+let interacted = false;   // has a real user gesture occurred?
+let prefOn     = false;   // persisted preference (default: off)
+let prefVol    = 0.35;    // moderate default
+
+/* ── Load saved prefs immediately ── */
+(function init(){
+  try{
+    const p = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+    if(p.vol != null) prefVol = Math.min(1, Math.max(0, Number(p.vol)));
+    if(p.on  != null) prefOn  = !!p.on;
+  }catch(e){}
+  audio.volume = prefVol;
+  slider.value = prefVol;
+  updateUI(); // reflect pref in button before any interaction
+})();
+
+function save(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify({on: musicOn, vol: prefVol})); }catch(e){}
+}
+
+/* ── Unlock audio context on first user gesture ──
+   Returns a Promise that resolves once the gesture
+   is handled and the play/pause pref is applied.    */
+function unlock(){
+  if(interacted) return Promise.resolve();
+  interacted = true;
+  return audio.play().then(()=>{
+    if(!prefOn){
+      audio.pause();
+      audio.currentTime = 0;
+      musicOn = false;
+    } else {
+      musicOn = true;
+    }
+    updateUI();
+  }).catch(()=>{
+    interacted = false; // still blocked — let them try again
+  });
+}
+
+/* ── Enter button — unlock then navigate ── */
+window.enterUniverse = function(){
+  unlock().finally(()=>{
+    setTimeout(()=>{ window.location.href = 'StoxBallz_DailyFix_v2.html'; },
+      musicOn ? 500 : 60);
+  });
+};
+
+/* ── Music toggle ── */
+window.toggleMusic = function(){
+  if(!interacted){
+    // Flip the desired pref, then unlock — unlock will apply it
+    prefOn = !prefOn;
+    unlock().then(()=>{ save(); });
+    return;
+  }
+  // Already interacted: just flip live state
+  if(musicOn){ audio.pause(); musicOn = false; }
+  else        { audio.play().catch(()=>{}); musicOn = true; }
+  prefOn = musicOn;
+  updateUI();
+  save();
+};
+
+/* ── Volume ── */
+window.setVolume = function(val){
+  prefVol = parseFloat(val);
+  audio.volume = prefVol;
+  save();
+};
+
+/* ── Reflect state in toggle button ── */
+function updateUI(){
+  // "Show ON" if playing, or if pref=on before first interaction
+  const showOn = musicOn || (!interacted && prefOn);
+  toggle.classList.toggle('playing', showOn);
+  label.textContent = showOn ? 'MUSIC ON' : 'MUSIC OFF';
+}
+
+/* ── Starfield ── */
+(function stars(){
+  const c = document.getElementById('stars');
+  for(let i = 0; i < 130; i++){
+    const s = document.createElement('div');
+    s.className = 'star';
+    const sz  = (Math.random() < 0.12 ? Math.random()*1.6+1 : Math.random()*0.9+0.2).toFixed(1);
+    const lo  = (Math.random()*0.06+0.01).toFixed(2);
+    const hi  = (Math.random()*0.4+0.06).toFixed(2);
+    const dur = (Math.random()*5+2).toFixed(1)+'s';
+    const del = '-'+(Math.random()*6).toFixed(1)+'s'; // negative delay = random phase start
+    s.style.cssText =
+      `width:${sz}px;height:${sz}px;`+
+      `left:${(Math.random()*100).toFixed(2)}%;top:${(Math.random()*100).toFixed(2)}%;`+
+      `--lo:${lo};--hi:${hi};--dur:${dur};--delay:${del};`;
+    c.appendChild(s);
+  }
+})();
+</script>
+</body>
+</html>
