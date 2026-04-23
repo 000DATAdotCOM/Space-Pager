@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>AREA181 // VR COMMAND CENTER</title>
+
+<!-- A-Frame -->
+<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+
+<!-- Super Hands for grab/move interactions -->
+<script src="https://cdn.jsdelivr.net/npm/super-hands@3.0.1/dist/super-hands.min.js"></script>
+
+<!-- Physics (needed for super-hands) -->
+<script src="https://cdn.jsdelivr.net/gh/n5ro/aframe-physics-system@v4.0.1/dist/aframe-physics-system.min.js"></script>
+
+<style>
+  #loading-screen {
+    position: fixed; inset: 0;
+    background: #020408;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 20px; z-index: 9999;
+    font-family: 'Share Tech Mono', monospace;
+    color: #ffaa00;
+  }
+  #loading-screen h1 {
+    font-size: 32px; letter-spacing: 6px;
+    text-shadow: 0 0 30px rgba(255,170,0,0.6);
+    margin: 0;
+  }
+  #loading-screen p {
+    font-size: 12px; letter-spacing: 3px;
+    color: rgba(255,170,0,0.5); margin: 0;
+  }
+  .bar-wrap {
+    width: 260px; height: 2px;
+    background: rgba(255,170,0,0.1);
+  }
+  .bar {
+    height: 100%; width: 0%;
+    background: #ffaa00;
+    box-shadow: 0 0 10px #ffaa00;
+    transition: width 0.4s;
+  }
+  #loading-screen.hidden { display: none; }
+
+  /* Panel UI overlay — shown when a panel is focused in non-VR mode */
+  #panel-ui {
+    position: fixed; bottom: 20px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; gap: 10px;
+    z-index: 100; display: none;
+  }
+  .ui-btn {
+    background: rgba(5,8,18,0.95);
+    border: 1px solid rgba(255,170,0,0.4);
+    color: #ffaa00;
+    font-family: monospace; font-size: 11px;
+    letter-spacing: 2px; padding: 8px 16px;
+    cursor: pointer; text-transform: uppercase;
+  }
+  .ui-btn:hover { background: rgba(255,170,0,0.1); }
+</style>
+</head>
+<body>
+
+<!-- Loading screen -->
+<div id="loading-screen">
+  <h1>AREA181</h1>
+  <p>VR COMMAND CENTER // LOADING ENVIRONMENT</p>
+  <div class="bar-wrap"><div class="bar" id="load-bar"></div></div>
+  <p id="load-status">// initializing...</p>
+</div>
+
+<a-scene
+  id="main-scene"
+  background="color: #020408"
+  renderer="antialias: true; colorManagement: true; physicallyCorrectLights: true"
+  loading-screen="enabled: false"
+  vr-mode-ui="enabled: true"
+  cursor="rayOrigin: mouse"
+>
+
+  <!-- ═══════════════════════════════════
+       ASSETS
+  ═══════════════════════════════════ -->
+  <a-assets timeout="30000">
+    <a-asset-item id="env-model" src="scene.gltf"></a-asset-item>
+  </a-assets>
+
+
+  <!-- ═══════════════════════════════════
+       ENVIRONMENT — your GLTF
+  ═══════════════════════════════════ -->
+  <a-entity
+    id="environment"
+    gltf-model="#env-model"
+    position="0 0 0"
+    scale="1 1 1"
+  ></a-entity>
+
+
+  <!-- ═══════════════════════════════════
+       AMBIENT + DIRECTIONAL LIGHT
+  ═══════════════════════════════════ -->
+  <a-light type="ambient" color="#334" intensity="0.8"></a-light>
+  <a-light type="directional" color="#ffaa44" intensity="0.6"
+    position="2 4 -1"></a-light>
+
+
+  <!-- ═══════════════════════════════════
+       GAME PANELS
+       Each is a grabbable iframe screen.
+       Grab with controller trigger, move
+       anywhere, release to pin in place.
+       Pinch to scale on Quest hand tracking.
+  ═══════════════════════════════════ -->
+
+  <!-- 1. TERMINAL — straight ahead, eye level -->
+  <a-entity id="panel-terminal"
+    class="game-panel"
+    position="0 1.6 -3"
+    rotation="0 0 0"
+    panel-controller
+  >
+    <!-- Frame border glow -->
+    <a-plane
+      width="2.1" height="1.25"
+      color="#ffaa00" opacity="0.12"
+      material="shader: flat"
+    ></a-plane>
+    <!-- The actual screen -->
+    <a-plane
+      width="2" height="1.15"
+      position="0 0 0.001"
+      material="shader: flat; color: #000"
+    >
+      <a-html src="https://000datadotcom.github.io/Space-Pager/StoxBallz_DailyFix_v2.html"
+        width="1280" height="740"
+        ppu="640"
+      ></a-html>
+    </a-plane>
+    <!-- Label -->
+    <a-text value="// TERMINAL — THE DAILY FIX"
+      position="0 -0.68 0"
+      align="center" color="#ffaa00"
+      font="mozillavr" width="3"
+    ></a-text>
+    <!-- Grab handle -->
+    <a-sphere position="0 0.7 0"
+      radius="0.04" color="#ffaa00"
+      class="grab-handle"
+      opacity="0.7"
+    ></a-sphere>
+  </a-entity>
+
+
+  <!-- 2. W.O.R.D. PAGER — left side -->
+  <a-entity id="panel-word"
+    class="game-panel"
+    position="-2.8 1.6 -2"
+    rotation="0 30 0"
+    panel-controller
+  >
+    <a-plane width="1.7" height="1.1" color="#00ff78" opacity="0.1"
+      material="shader: flat"></a-plane>
+    <a-plane width="1.6" height="1.0" position="0 0 0.001"
+      material="shader: flat; color: #000">
+      <a-html src="https://000datadotcom.github.io/Space-Pager/StoxBallz_WORD.html"
+        width="1024" height="640" ppu="640"></a-html>
+    </a-plane>
+    <a-text value="// W.O.R.D. SPACE PAGER"
+      position="0 -0.62 0" align="center"
+      color="#00ff78" font="mozillavr" width="2.5"></a-text>
+    <a-sphere position="0 0.62 0" radius="0.04"
+      color="#00ff78" class="grab-handle" opacity="0.7"></a-sphere>
+  </a-entity>
+
+
+  <!-- 3. DIGIWARS — right side -->
+  <a-entity id="panel-digiwars"
+    class="game-panel"
+    position="2.8 1.6 -2"
+    rotation="0 -30 0"
+    panel-controller
+  >
+    <a-plane width="1.7" height="1.1" color="#ff3d3d" opacity="0.1"
+      material="shader: flat"></a-plane>
+    <a-plane width="1.6" height="1.0" position="0 0 0.001"
+      material="shader: flat; color: #000">
+      <a-html src="https://000datadotcom.github.io/Space-Pager/StoxBallz_DiGiWars.html"
+        width="1024" height="640" ppu="640"></a-html>
+    </a-plane>
+    <a-text value="// DIGIWARS"
+      position="0 -0.62 0" align="center"
+      color="#ff3d3d" font="mozillavr" width="2.5"></a-text>
+    <a-sphere position="0 0.62 0" radius="0.04"
+      color="#ff3d3d" class="grab-handle" opacity="0.7"></a-sphere>
+  </a-entity>
+
+
+  <!-- 4. WORLD MAP — overhead / ceiling display -->
+  <a-entity id="panel-worldmap"
+    class="game-panel"
+    position="0 3.2 -2"
+    rotation="-25 0 0"
+    panel-controller
+  >
+    <a-plane width="2.1" height="1.25" color="#00e5ff" opacity="0.1"
+      material="shader: flat"></a-plane>
+    <a-plane width="2" height="1.15" position="0 0 0.001"
+      material="shader: flat; color: #000">
+      <a-html src="https://000datadotcom.github.io/Space-Pager/StoxBallz_WorldMap.html"
+        width="1280" height="740" ppu="640"></a-html>
+    </a-plane>
+    <a-text value="// WORLD MAP — TACTICAL OVERVIEW"
+      position="0 -0.68 0" align="center"
+      color="#00e5ff" font="mozillavr" width="3"></a-text>
+    <a-sphere position="0 0.7 0" radius="0.04"
+      color="#00e5ff" class="grab-handle" opacity="0.7"></a-sphere>
+  </a-entity>
+
+
+  <!-- 5. BL0XBUSTD KIOSK — behind/to the side, walk up to it -->
+  <a-entity id="panel-kiosk"
+    class="game-panel"
+    position="3 1.6 1"
+    rotation="0 -60 0"
+    panel-controller
+  >
+    <a-plane width="1.7" height="1.1" color="#ff7a00" opacity="0.15"
+      material="shader: flat"></a-plane>
+    <a-plane width="1.6" height="1.0" position="0 0 0.001"
+      material="shader: flat; color: #000">
+      <a-html src="https://000datadotcom.github.io/Space-Pager/bl0xbustd_kiosk_v2_THE_FINAL_CARTRIDGE_Kiosk.html"
+        width="1024" height="640" ppu="640"></a-html>
+    </a-plane>
+    <a-text value="// BL0XBUSTD KIOSK"
+      position="0 -0.62 0" align="center"
+      color="#ff7a00" font="mozillavr" width="2.5"></a-text>
+    <a-sphere position="0 0.62 0" radius="0.04"
+      color="#ff7a00" class="grab-handle" opacity="0.7"></a-sphere>
+  </a-entity>
+
+
+  <!-- ═══════════════════════════════════
+       SCALE CONTROLS — floating buttons
+       in front of player to resize panels
+  ═══════════════════════════════════ -->
+  <a-entity id="scale-controls" position="0 1.0 -1.5">
+
+    <a-text value="EXPAND" position="-0.5 0 0" align="center"
+      color="#ffaa00" width="1.5" font="mozillavr"
+      class="clickable" scale-btn="factor: 1.5"
+    ></a-text>
+
+    <a-text value="SHRINK" position="0.5 0 0" align="center"
+      color="#ffaa00" width="1.5" font="mozillavr"
+      class="clickable" scale-btn="factor: 0.67"
+    ></a-text>
+
+    <a-text value="SELECT PANEL ↑" position="0 -0.2 0"
+      align="center" color="rgba(255,170,0,0.4)"
+      width="1.2" font="mozillavr"
+    ></a-text>
+
+  </a-entity>
+
+
+  <!-- ═══════════════════════════════════
+       PLAYER RIG
+       - Camera (your eyes)
+       - Left + Right controllers with laser
+       - Trigger = interact with panels
+  ═══════════════════════════════════ -->
+  <a-entity id="rig" position="0 0 2">
+
+    <a-camera
+      id="camera"
+      wasd-controls="enabled: true"
+      look-controls="enabled: true"
+      position="0 1.6 0"
+    >
+      <!-- Crosshair cursor for desktop mode -->
+      <a-cursor
+        color="#ffaa00"
+        fuse="false"
+        raycaster="objects: .clickable, .grab-handle, .game-panel"
+      ></a-cursor>
+    </a-camera>
+
+    <!-- Right controller -->
+    <a-entity
+      id="right-hand"
+      oculus-touch-controls="hand: right"
+      raycaster="objects: .clickable, .grab-handle; showLine: true; lineColor: #ffaa00; lineOpacity: 0.5"
+      super-hands
+    ></a-entity>
+
+    <!-- Left controller -->
+    <a-entity
+      id="left-hand"
+      oculus-touch-controls="hand: left"
+      raycaster="objects: .clickable, .grab-handle; showLine: true; lineColor: #ffaa00; lineOpacity: 0.3"
+      super-hands
+    ></a-entity>
+
+  </a-entity>
+
+
+</a-scene>
+
+
+<!-- ═══════════════════════════════════════
+     JAVASCRIPT — Panel grab, scale, select
+═══════════════════════════════════════ -->
+<script>
+
+// ── Loading screen progress ──────────────────
+let loadProgress = 0;
+const loadBar = document.getElementById('load-bar');
+const loadStatus = document.getElementById('load-status');
+const loadScreen = document.getElementById('loading-screen');
+const msgs = [
+  '// initializing...',
+  '// loading environment...',
+  '// mounting game panels...',
+  '// calibrating VR rig...',
+  '// AREA181 ready'
+];
+let msgIdx = 0;
+
+const loadInterval = setInterval(() => {
+  loadProgress = Math.min(loadProgress + Math.random() * 18, 95);
+  loadBar.style.width = loadProgress + '%';
+  if (msgIdx < msgs.length - 1 && loadProgress > msgIdx * 22) {
+    loadStatus.textContent = msgs[++msgIdx];
+  }
+}, 300);
+
+document.querySelector('a-scene').addEventListener('loaded', () => {
+  clearInterval(loadInterval);
+  loadBar.style.width = '100%';
+  loadStatus.textContent = msgs[msgs.length - 1];
+  setTimeout(() => { loadScreen.classList.add('hidden'); }, 600);
+});
+
+
+// ── Panel Controller Component ───────────────
+// Makes each panel grabbable and scaleable
+AFRAME.registerComponent('panel-controller', {
+  init: function () {
+    const el = this.el;
+    let selected = false;
+
+    // Click the grab handle sphere to SELECT this panel
+    const handle = el.querySelector('.grab-handle');
+    if (handle) {
+      handle.addEventListener('click', () => {
+        // Deselect all others
+        document.querySelectorAll('.game-panel').forEach(p => {
+          p.setAttribute('panel-controller', '');
+          p.querySelector('.grab-handle')?.setAttribute('color', p.querySelector('.grab-handle').getAttribute('color'));
+        });
+        // Select this one
+        window.selectedPanel = el;
+        handle.setAttribute('opacity', '1');
+        handle.setAttribute('scale', '1.4 1.4 1.4');
+
+        // Flash the border
+        const border = el.querySelector('a-plane');
+        const origOpacity = border.getAttribute('opacity');
+        border.setAttribute('opacity', 0.4);
+        setTimeout(() => border.setAttribute('opacity', origOpacity), 300);
+
+        console.log('Selected panel:', el.id);
+      });
+    }
+
+    // Drag to move (desktop mouse drag on handle)
+    let dragging = false;
+    let startPos = null;
+    let startElPos = null;
+
+    if (handle) {
+      handle.addEventListener('mousedown', (e) => {
+        dragging = true;
+        startPos = { x: e.clientX, y: e.clientY };
+        const pos = el.getAttribute('position');
+        startElPos = { x: pos.x, y: pos.y, z: pos.z };
+      });
+    }
+
+    document.addEventListener('mousemove', (e) => {
+      if (!dragging || !startPos) return;
+      const dx = (e.clientX - startPos.x) * 0.005;
+      const dy = -(e.clientY - startPos.y) * 0.005;
+      el.setAttribute('position', {
+        x: startElPos.x + dx,
+        y: startElPos.y + dy,
+        z: startElPos.z
+      });
+    });
+
+    document.addEventListener('mouseup', () => {
+      dragging = false;
+      startPos = null;
+    });
+  }
+});
+
+
+// ── Scale Button Component ───────────────────
+AFRAME.registerComponent('scale-btn', {
+  schema: { factor: { type: 'number', default: 1.5 } },
+  init: function () {
+    this.el.addEventListener('click', () => {
+      const panel = window.selectedPanel;
+      if (!panel) {
+        // Flash a hint
+        this.el.setAttribute('color', '#fff');
+        setTimeout(() => this.el.setAttribute('color', '#ffaa00'), 200);
+        return;
+      }
+      const current = panel.getAttribute('scale') || { x: 1, y: 1, z: 1 };
+      const f = this.data.factor;
+      const nx = (current.x || 1) * f;
+      const ny = (current.y || 1) * f;
+      // Clamp between 0.3x and 3x
+      if (nx < 0.25 || nx > 3.5) return;
+      panel.setAttribute('scale', `${nx} ${ny} 1`);
+    });
+  }
+});
+
+
+// ── Keyboard shortcuts (desktop / flatscreen) ─
+// E = expand selected, S = shrink, 1-5 = select panel
+document.addEventListener('keydown', (e) => {
+  const panels = [
+    document.getElementById('panel-terminal'),
+    document.getElementById('panel-word'),
+    document.getElementById('panel-digiwars'),
+    document.getElementById('panel-worldmap'),
+    document.getElementById('panel-kiosk'),
+  ];
+
+  if (e.key === 'e' || e.key === 'E') scaleSelected(1.25);
+  if (e.key === 's' || e.key === 'S') scaleSelected(0.8);
+  if (e.key === 'r' || e.key === 'R') resetSelected();
+
+  // Number keys 1-5 to quick-select panels
+  const num = parseInt(e.key);
+  if (num >= 1 && num <= 5) {
+    window.selectedPanel = panels[num - 1];
+    console.log('Panel selected:', window.selectedPanel?.id);
+  }
+});
+
+function scaleSelected(factor) {
+  const panel = window.selectedPanel;
+  if (!panel) return;
+  const s = panel.getAttribute('scale') || { x: 1, y: 1, z: 1 };
+  const nx = (s.x || 1) * factor;
+  if (nx < 0.25 || nx > 4) return;
+  panel.setAttribute('scale', `${nx} ${nx * (s.y / s.x || 1)} 1`);
+}
+
+function resetSelected() {
+  const panel = window.selectedPanel;
+  if (!panel) return;
+  panel.setAttribute('scale', '1 1 1');
+}
+
+
+// ── VR Controller Thumbstick to scale ────────
+// Right thumbstick Y = scale selected panel
+document.querySelector('#right-hand')?.addEventListener('thumbstickmoved', (e) => {
+  const y = e.detail.y;
+  if (Math.abs(y) > 0.5) {
+    scaleSelected(y < 0 ? 1.02 : 0.98);
+  }
+});
+
+
+// ── Environment scale auto-adjust ────────────
+// Try to figure out if the GLTF is too big or small
+// and auto-scale it to feel room-sized
+document.querySelector('#env-model')?.addEventListener('model-loaded', () => {
+  const model = document.querySelector('#environment');
+  // Get bounding box
+  const bbox = new THREE.Box3().setFromObject(model.object3D);
+  const size = new THREE.Vector3();
+  bbox.getSize(size);
+  console.log('Environment size:', size);
+
+  // If the model is tiny (< 2 units wide), scale it up
+  if (size.x < 2) {
+    const factor = 5 / size.x;
+    model.setAttribute('scale', `${factor} ${factor} ${factor}`);
+    console.log('Auto-scaled environment by', factor);
+  }
+  // If massive (> 50 units), scale down
+  else if (size.x > 50) {
+    const factor = 10 / size.x;
+    model.setAttribute('scale', `${factor} ${factor} ${factor}`);
+    console.log('Auto-scaled environment down by', factor);
+  }
+});
+
+</script>
+
+<!-- Controls hint overlay (desktop) -->
+<div style="
+  position: fixed; bottom: 16px; right: 16px;
+  background: rgba(2,4,8,0.9);
+  border: 1px solid rgba(255,170,0,0.25);
+  color: rgba(255,170,0,0.6);
+  font-family: monospace; font-size: 10px;
+  letter-spacing: 1.5px; line-height: 2;
+  padding: 10px 14px; z-index: 50;
+  pointer-events: none;
+">
+  // DESKTOP CONTROLS<br>
+  WASD — move<br>
+  MOUSE — look<br>
+  DRAG HANDLE — move panel<br>
+  CLICK HANDLE — select panel<br>
+  E — expand selected<br>
+  S — shrink selected<br>
+  R — reset scale<br>
+  1-5 — quick select panel<br>
+  <br>
+  // VR CONTROLS<br>
+  TRIGGER — grab handle<br>
+  THUMBSTICK Y — scale<br>
+  MOVE ARM — reposition
+</div>
+
+</body>
+</html>
